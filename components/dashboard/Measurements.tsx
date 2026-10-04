@@ -3,9 +3,9 @@ import { fmtDay } from "@/lib/dashboard/time";
 import { num, signed } from "./format";
 import { Block, Empty, fromLoader, type Loaded } from "./Block";
 
-export function Measurements({ data }: { data: Loaded<MeasurementsData> }) {
+export function Measurements({ data, fold }: { data: Loaded<MeasurementsData>; fold?: boolean }) {
   return (
-    <Block title="Umfänge" wide>
+    <Block fold={fold} title="Umfänge" wide>
       {fromLoader(data, (m) => {
         if (!m.rows.length || !m.hasCircumference) {
           return (

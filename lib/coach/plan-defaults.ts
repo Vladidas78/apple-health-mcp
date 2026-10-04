@@ -54,6 +54,7 @@ export const MUSCLE_GROUPS: { key: MuscleKey; label: string; target: number }[] 
 export const SETS_TARGET: Record<MuscleKey, number> = Object.fromEntries(
   MUSCLE_GROUPS.map((g) => [g.key, g.target]),
 ) as Record<MuscleKey, number>;
+export const SETS_TARGET_TOTAL = MUSCLE_GROUPS.reduce((a, g) => a + g.target, 0); // 86
 
 // HEVY primary_muscle_group → plan muscle group. Unmapped groups (cardio, forearms,
 // lower_back, ...) are reported under "sonstiges" and not compared to a target.

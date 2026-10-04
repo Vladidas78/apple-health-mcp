@@ -1,0 +1,447 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="color-scheme" content="dark" />
+<title>Coach – Vorschau (Fixture)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" />
+<style>/* Design system "Eisenkeller mit Konsole" (Gina, 07-gina.md). Seven color tokens,
+   three fonts, one texture per zone. Dark only. Phone first (390px). */
+
+:root {
+  --bg: #0a0a0a;
+  --panel: #141414;
+  --line: #262626;
+  --ink: #e8e4da;
+  --mute: #8a8780;
+  --iron: #f2c300;
+  --ai: #00e5ff; /* only inside .coach */
+  --stop: #ff3b2f; /* only the traffic light */
+  --go: #6fcf4a; /* traffic light green, nowhere else */
+  --font-head: "Anton", "Impact", "Arial Narrow", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --font-text: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+html { background: var(--bg); -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-text);
+  font-size: 15px;
+  line-height: 1.4;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Grain: one global layer, 4 %. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  pointer-events: none;
+  opacity: 0.04;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 1 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>");
+  background-size: 160px 160px;
+}
+
+a { color: inherit; }
+button { font: inherit; }
+svg { display: block; max-width: 100%; height: auto; }
+
+.wrap {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 16px 48px;
+}
+
+/* ---- type ---------------------------------------------------------------- */
+
+.head {
+  font-family: var(--font-head);
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  line-height: 1;
+}
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.mute { color: var(--mute); }
+.gold { color: var(--iron); }
+.small { font-size: 12px; }
+
+/* ---- header / footer ----------------------------------------------------- */
+
+.hdr {
+  padding: 18px 0 12px;
+  border-bottom: 6px solid var(--iron);
+}
+.hdr__title { font-size: 30px; margin: 0; }
+
+.btn {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ink);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 7px 10px;
+  cursor: pointer;
+  min-height: 32px;
+}
+.btn:disabled { color: var(--mute); cursor: default; }
+.btn--gold { background: var(--iron); color: var(--bg); border-color: var(--iron); }
+.btn--big {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  margin-top: 14px;
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  border: 1px solid var(--ink);
+  background: transparent;
+  text-decoration: none;
+}
+
+.ftr {
+  margin-top: 24px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--mute);
+}
+.ftr__stand { font-size: 11px; letter-spacing: 0.06em; }
+.ftr__msg { margin-top: 4px; }
+.ftr__btns { display: flex; gap: 6px; flex-shrink: 0; }
+
+/* ---- blocks -------------------------------------------------------------- */
+
+.grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  margin-top: 16px;
+}
+.block {
+  background: var(--panel);
+  padding: 14px 16px 16px;
+  min-width: 0;
+  position: relative;
+}
+.block__h {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--mute);
+  margin: 0 0 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.empty {
+  color: var(--mute);
+  font-size: 13px;
+  padding: 6px 0;
+}
+.err { color: var(--mute); font-family: var(--font-mono); font-size: 12px; }
+
+@media (min-width: 640px) {
+  .grid { grid-template-columns: 1fr 1fr; }
+  .block--wide { grid-column: 1 / -1; }
+}
+.grid--stack { grid-template-columns: 1fr; }
+
+/* folded block (inside STATS) */
+details.block--fold > summary {
+  cursor: pointer;
+  list-style: none;
+  margin: 0;
+  min-height: 20px;
+}
+details.block--fold > summary::-webkit-details-marker { display: none; }
+details.block--fold > summary > span:first-child::before { content: "+ "; color: var(--mute); }
+details.block--fold[open] > summary > span:first-child::before { content: "− "; }
+details.block--fold[open] > summary { margin-bottom: 10px; }
+
+/* ---- HEUTE: hero, evidence, level bar, traffic-light line ---------------- */
+
+.today { padding-bottom: 18px; }
+.hero {
+  font-family: var(--font-head);
+  font-size: 120px; /* overridden inline by heroStyle() per label length */
+  line-height: 0.92;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 2px 0 0;
+  white-space: nowrap;
+  overflow: hidden;
+  font-variant-numeric: tabular-nums;
+}
+.hero--xp { color: var(--iron); }
+.hero--slot { color: var(--ink); }
+.hero--pause { color: var(--mute); }
+.hero--stopp { color: var(--stop); }
+.beleg {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink);
+  margin-top: 10px;
+  display: grid;
+  gap: 2px;
+}
+.beleg .gold { color: var(--iron); }
+
+.level { height: 48px; margin-top: 14px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
+.level__track { height: 6px; background: var(--line); }
+.level__fill { height: 100%; background: var(--iron); animation: grow 600ms ease-out both; }
+@keyframes grow { from { width: 0; } }
+.level__txt { display: flex; justify-content: space-between; font-size: 12px; letter-spacing: 0.08em; color: var(--ink); }
+
+.ampel-line { font-size: 13px; letter-spacing: 0.04em; margin: 10px 0 12px; color: var(--ink); }
+.ampel-word { font-weight: 600; }
+.ampel-word--gruen { color: var(--go); }
+.ampel-word--stopp { color: var(--stop); }
+.ampel-word--unbekannt { color: var(--mute); }
+
+/* ---- DIESE WOCHE: slot bar ---------------------------------------------- */
+
+.slots { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.slot {
+  height: 56px;
+  background: var(--panel);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 3px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--mute);
+  min-width: 0;
+}
+.slot__k { font-weight: 600; color: var(--ink); }
+.slot--done { background: var(--iron); }
+.slot--done .slot__d, .slot--done .slot__k { color: var(--bg); }
+.slot--today { box-shadow: inset 0 0 0 2px var(--ink); }
+.wk-line { font-size: 12px; letter-spacing: 0.06em; text-transform: uppercase; margin-top: 10px; }
+.wk-line + .wk-line { margin-top: 4px; }
+
+/* ---- recovery light ------------------------------------------------------ */
+
+.ampel {
+  font-family: var(--font-head);
+  font-size: clamp(34px, 12vw, 56px);
+  overflow-wrap: anywhere;
+  line-height: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: 2px 0 10px;
+}
+.ampel--gruen { color: var(--go); }
+.ampel--gelb { color: var(--iron); }
+.ampel--stopp { color: var(--stop); }
+.ampel--unbekannt { color: var(--mute); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  padding: 3px 7px;
+  color: var(--ink);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.chip b { font-weight: 600; color: var(--ink); }
+.chip--mute { color: var(--mute); }
+.reasons { font-size: 12px; color: var(--mute); margin: 8px 0 0; }
+
+/* ---- coach (the only cyan zone) ------------------------------------------ */
+
+.coach {
+  position: relative;
+  background: var(--panel);
+  border-left: 2px solid var(--ai);
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  padding: 12px 14px 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+.coach::after {
+  /* scanlines, 2px, 6 % */
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(0deg, rgba(0, 229, 255, 0.06) 0 1px, transparent 1px 3px);
+}
+.coach__prefix { color: var(--ai); font-weight: 600; letter-spacing: 0.08em; margin-bottom: 6px; }
+.coach__line { margin: 0 0 4px; color: var(--ink); animation: rise 240ms ease-out both; }
+.coach__line:nth-child(2) { animation-delay: 80ms; }
+.coach__line:nth-child(3) { animation-delay: 160ms; }
+.coach__line:nth-child(4) { animation-delay: 240ms; }
+.coach__chips { margin-top: 8px; }
+.coach .chip { color: var(--mute); }
+@keyframes rise {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---- boss card (the only halftone zone) ---------------------------------- */
+
+.boss { overflow: hidden; }
+.boss::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: radial-gradient(circle, rgba(232, 228, 218, 0.09) 0.8px, transparent 1.1px);
+  background-size: 5px 5px;
+}
+.boss > * { position: relative; }
+.boss__title { font-size: 32px; color: var(--ink); margin: 0 0 10px; }
+.boss__title em { font-style: normal; color: var(--iron); }
+.bossbars { display: grid; }
+.bossbar {
+  height: 36px;
+  display: grid;
+  grid-template-columns: 88px 1fr 52px;
+  gap: 10px;
+  align-items: center;
+  border-top: 1px solid var(--line);
+}
+.bossbar:first-child { border-top: 0; }
+.bossbar__l { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bossbar__track { display: block; height: 6px; background: var(--line); }
+.bossbar__fill { display: block; height: 100%; background: var(--iron); }
+.bossbar__v { font-size: 13px; text-align: right; white-space: nowrap; }
+
+.feed { margin-top: 14px; border-top: 1px solid var(--line); padding-top: 10px; }
+.feed__h { font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mute); }
+.feed__list { list-style: none; margin: 4px 0 0; padding: 0; }
+.feed__row { height: 32px; display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.feed__lift { font-size: 14px; font-weight: 600; }
+.feed__val { font-size: 13px; white-space: nowrap; }
+.feed__val s { text-decoration: line-through; }
+.feed__empty { margin: 6px 0 0; font-size: 14px; color: var(--mute); }
+
+/* ---- STATS: closed by default ------------------------------------------- */
+
+details.stats { padding: 0; }
+details.stats > summary {
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 0 16px;
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  list-style: none;
+  color: var(--ink);
+}
+details.stats > summary::-webkit-details-marker { display: none; }
+details.stats > summary > span:first-child::before { content: "+ "; color: var(--mute); }
+details.stats[open] > summary > span:first-child::before { content: "− "; }
+.stats__grid { margin-top: 0; border-width: 1px 0 0; }
+
+/* ---- training week ------------------------------------------------------- */
+
+.week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 1px; background: var(--line); border: 1px solid var(--line); }
+.day { background: var(--panel); min-height: 64px; padding: 6px 4px; min-width: 0; }
+.day__n { font-family: var(--font-mono); font-size: 10px; color: var(--mute); letter-spacing: 0.06em; }
+.day--today .day__n { color: var(--iron); }
+.day__t { font-family: var(--font-head); font-size: 12px; line-height: 1.1; letter-spacing: 0.03em; text-transform: uppercase; margin-top: 4px; overflow: hidden; overflow-wrap: anywhere; max-height: 2.3em; }
+.day__m { font-family: var(--font-mono); font-size: 10px; color: var(--mute); margin-top: 2px; }
+.day--rest .day__t { color: var(--line); }
+
+.bars { margin-top: 12px; display: grid; gap: 7px; }
+.bar { display: grid; grid-template-columns: 112px 1fr 58px; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 12px; }
+.bar__l { color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bar__track { height: 6px; background: var(--line); position: relative; }
+.bar__fill { height: 100%; background: var(--ink); }
+.bar__fill--full { background: var(--iron); }
+.bar__v { text-align: right; color: var(--ink); white-space: nowrap; }
+.bar__v span { color: var(--mute); }
+@media (max-width: 400px) { .bar { grid-template-columns: 96px 1fr 54px; } }
+
+/* ---- lists / tables ------------------------------------------------------ */
+
+.list { list-style: none; margin: 0; padding: 0; font-family: var(--font-mono); font-size: 13px; }
+.list li { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-top: 1px solid var(--line); }
+.list li:first-child { border-top: 0; }
+.note { font-size: 12px; color: var(--mute); margin-top: 10px; }
+
+.tbl { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; }
+.tbl th, .tbl td { padding: 6px 4px; text-align: right; border-top: 1px solid var(--line); white-space: nowrap; }
+.tbl th { color: var(--mute); font-weight: 400; border-top: 0; }
+.tbl th:first-child, .tbl td:first-child { text-align: left; }
+.tbl tr.delta td { color: var(--ink); font-weight: 600; }
+
+/* ---- charts (inline SVG) ------------------------------------------------- */
+
+.chart { width: 100%; }
+.chart text { font-family: var(--font-mono); font-size: 11px; fill: var(--mute); }
+.chart .grid-line { stroke: var(--line); stroke-width: 1; }
+.chart .line { fill: none; stroke: var(--ink); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart .goal { fill: none; stroke: var(--iron); stroke-width: 1.5; stroke-dasharray: 4 4; }
+.chart .dot { fill: var(--ink); stroke: var(--panel); stroke-width: 2; }
+.chart .dot--gold { fill: var(--iron); }
+.chart .dot--raw { fill: var(--mute); opacity: 0.6; }
+.chart .col { fill: var(--ink); }
+.chart .col--now { fill: var(--iron); }
+.chart .end-label { fill: var(--ink); font-weight: 600; }
+.legend { display: flex; gap: 14px; flex-wrap: wrap; font-family: var(--font-mono); font-size: 11px; color: var(--mute); margin-top: 6px; }
+.legend i { display: inline-block; width: 14px; height: 0; border-top: 2px solid var(--ink); vertical-align: middle; margin-right: 5px; }
+.legend i.goal { border-top: 2px dashed var(--iron); }
+.legend i.col { height: 8px; width: 8px; border: 0; background: var(--ink); }
+
+.lifts { display: grid; gap: 10px; }
+.lift { display: grid; grid-template-columns: minmax(0, 1fr) 80px auto; gap: 10px; align-items: center; border-top: 1px solid var(--line); padding-top: 8px; }
+@media (min-width: 480px) { .lift { grid-template-columns: minmax(0, 1fr) 120px auto; } .spark { width: 120px; } }
+.lift:first-child { border-top: 0; padding-top: 0; }
+.lift__t { font-size: 13px; font-weight: 600; line-height: 1.2; }
+.lift__s { font-family: var(--font-mono); font-size: 11px; color: var(--mute); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lift__v { text-align: right; font-family: var(--font-mono); font-size: 13px; white-space: nowrap; }
+.lift__v b { font-size: 18px; font-weight: 600; }
+.lift__v .soll { color: var(--mute); font-size: 11px; display: block; }
+.spark { width: 80px; height: 28px; }
+.spark .line { stroke: var(--ink); stroke-width: 2; fill: none; stroke-linejoin: round; stroke-linecap: round; }
+.spark .dot { fill: var(--iron); }
+.spark .goal { stroke: var(--iron); stroke-width: 1; stroke-dasharray: 3 3; }
+
+/* ---- motion -------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
+</style>
+</head>
+<body><main class="wrap"><header class="hdr"><h1 class="head hdr__title">KRAFT &amp; FIGUR Q4</h1></header><div class="grid grid--stack"><section class="block block--wide today" aria-label="Heute"><h2 class="block__h"><span>Heute</span><span>MI 14.10.</span></h2><div class="hero hero--slot" role="status" style="font-size:min(120px, 44vw)">PULL</div><div class="beleg mono"><div>WOCHE 2 / 12 · HEVY PULL</div></div><div class="level" aria-label="Level 1 Lehrling, 440 XP"><div class="level__track"><div class="level__fill" style="width:88%"></div></div><div class="level__txt mono"><span>LEHRLING</span><span>440 / 500</span></div></div><div class="ampel-line mono"><span class="ampel-word ampel-word--gelb">GELB</span><span> · RHR 58 / BASIS 53</span><span> · HRV 61 / 7D 66</span></div><div class="coach"><div class="coach__prefix">&gt; COACH</div><p class="coach__line">Heute PULL 75 %, 16 Sätze, RPE 8; Ampel gelb, letzte Sätze 1 RIR mehr, Intervall wird Z2.</p><p class="coach__line">Woche 2: 2 Einheiten, 31 Sätze bis Mi (Tag 3 von 7).</p><div class="chips coach__chips"><span class="chip">HEALTH RHR 58 / 7d 55</span></div></div><a class="btn btn--big" href="hevy://routine/61a8acd6-9385-4688-b066-09392d19332c" title="PULL (Mi) · Kraft &amp; Figur">In HEVY öffnen</a></section><section class="block block--wide" aria-label="Diese Woche"><h2 class="block__h"><span>Diese Woche</span><span>12.10.–18.10.</span></h2><div class="slots" role="list" aria-label="Plan-Slots der Woche"><div role="listitem" class="slot slot--done" title="Push - A · 12.10."><span class="slot__d">Mo</span><span class="slot__k">PUSH</span></div><div role="listitem" class="slot slot--done" title="Lower A · 13.10."><span class="slot__d">Di</span><span class="slot__k">LEGS</span></div><div role="listitem" class="slot  slot--today" title="PULL offen"><span class="slot__d">Mi</span><span class="slot__k">PULL</span></div><div role="listitem" class="slot" title="LAUF offen"><span class="slot__d">Do</span><span class="slot__k">LAUF</span></div><div role="listitem" class="slot" title="CALI offen"><span class="slot__d">Fr</span><span class="slot__k">CALI</span></div><div role="listitem" class="slot" title="LAUF offen"><span class="slot__d">Sa</span><span class="slot__k">LAUF</span></div></div><div class="wk-line mono">XP DIESE WOCHE 200 · SÄTZE 31 / 86</div><div class="wk-line mono mute">WOCHEN GEWERTET 2 · KOMPLETT 0</div></section><section class="block block--wide boss" aria-label="Boss"><h2 class="block__h"><span>Boss</span><span>21.12.–27.12.</span></h2><h3 class="head boss__title">BOSS · <em>KW 52</em></h3><div class="bossbars"><div class="bossbar" title="Bank: Baseline 88 kg (06.10.) · Ist 93,3 kg · Ziel 99 kg"><span class="bossbar__l">Bank</span><span class="bossbar__track"><span class="bossbar__fill" style="width:48%"></span></span><span class="bossbar__v mono">48 %</span></div><div class="bossbar" title="Klimmzüge: Baseline 11 Wdh (06.10.) · Ist 12 Wdh · Ziel 16 Wdh"><span class="bossbar__l">Klimmzüge</span><span class="bossbar__track"><span class="bossbar__fill" style="width:20%"></span></span><span class="bossbar__v mono">20 %</span></div><div class="bossbar" title="Dips: Baseline 7,5 kg (06.10.) · Ist 10 kg · Ziel 17,5 kg"><span class="bossbar__l">Dips</span><span class="bossbar__track"><span class="bossbar__fill" style="width:25%"></span></span><span class="bossbar__v mono">25 %</span></div><div class="bossbar" title="Squat: Baseline 84 kg (06.10.) · Ist 88,7 kg · Ziel 108 kg"><span class="bossbar__l">Squat</span><span class="bossbar__track"><span class="bossbar__fill" style="width:20%"></span></span><span class="bossbar__v mono">20 %</span></div><div class="bossbar" title="Taille: Baseline 96,5 cm (06.10.) · Ist 95,5 cm · Ziel 92,5 cm"><span class="bossbar__l">Taille</span><span class="bossbar__track"><span class="bossbar__fill" style="width:25%"></span></span><span class="bossbar__v mono">25 %</span></div><div class="bossbar" title="Gewicht: Baseline 92,6 kg (06.10.) · Ist 92,1 kg · Ziel 88,5 kg"><span class="bossbar__l">Gewicht</span><span class="bossbar__track"><span class="bossbar__fill" style="width:12%"></span></span><span class="bossbar__v mono">12 %</span></div></div><p class="note mono">Baseline vorläufig bis 19.10.: bester Wert der ersten 14 Plan-Tage.</p><div class="feed"><div class="feed__h mono">Neue Bestwerte diese Woche</div><p class="feed__empty">Noch keiner. </p></div></section><details class="block block--wide stats"><summary class="stats__sum mono"><span>STATS</span><span class="mute">·</span><span>GEWICHT 92,7</span><span class="mute">·</span><span>31 SÄTZE</span><span class="mute">·</span><span>1 LAUF</span></summary><div class="grid stats__grid"><details class="block block--wide block--fold"><summary class="block__h"><span>Trainingswoche</span><span>12.10.–18.10.</span></summary><div class="block__body"><div class="week" role="list" aria-label="Einheiten der Woche"><div class="day" role="listitem"><div class="day__n">Mo 12.</div><div class="day__t" title="Push - A">Push - A</div><div class="day__m">52′ · 15 S</div></div><div class="day" role="listitem"><div class="day__n">Di 13.</div><div class="day__t" title="Lower A">Lower A</div><div class="day__m">58′ · 16 S</div></div><div class="day day--today day--rest" role="listitem"><div class="day__n">Mi 14.</div><div class="day__t">—</div></div><div class="day  day--rest" role="listitem"><div class="day__n">Do 15.</div><div class="day__t">—</div></div><div class="day  day--rest" role="listitem"><div class="day__n">Fr 16.</div><div class="day__t">—</div></div><div class="day  day--rest" role="listitem"><div class="day__n">Sa 17.</div><div class="day__t">—</div></div><div class="day  day--rest" role="listitem"><div class="day__n">So 18.</div><div class="day__t">—</div></div></div><div class="bars" aria-label="Sätze je Muskelgruppe"><div class="bar" title="Brust: 8 von 15 Sätzen"><span class="bar__l">Brust</span><span class="bar__track"><span class="bar__fill" style="width:53.333333333333336%;display:block"></span></span><span class="bar__v">8<span>/15</span></span></div><div class="bar" title="Lat: 7 von 12 Sätzen"><span class="bar__l">Lat</span><span class="bar__track"><span class="bar__fill" style="width:58.333333333333336%;display:block"></span></span><span class="bar__v">7<span>/12</span></span></div><div class="bar" title="Oberer Rücken: 4 von 6 Sätzen"><span class="bar__l">Oberer Rücken</span><span class="bar__track"><span class="bar__fill" style="width:66.66666666666666%;display:block"></span></span><span class="bar__v">4<span>/6</span></span></div><div class="bar" title="Schultern: 5 von 10 Sätzen"><span class="bar__l">Schultern</span><span class="bar__track"><span class="bar__fill" style="width:50%;display:block"></span></span><span class="bar__v">5<span>/10</span></span></div><div class="bar" title="Bizeps: 4 von 5 Sätzen"><span class="bar__l">Bizeps</span><span class="bar__track"><span class="bar__fill" style="width:80%;display:block"></span></span><span class="bar__v">4<span>/5</span></span></div><div class="bar" title="Trizeps: 4 von 6 Sätzen"><span class="bar__l">Trizeps</span><span class="bar__track"><span class="bar__fill" style="width:66.66666666666666%;display:block"></span></span><span class="bar__v">4<span>/6</span></span></div><div class="bar" title="Quads: 6 von 10 Sätzen"><span class="bar__l">Quads</span><span class="bar__track"><span class="bar__fill" style="width:60%;display:block"></span></span><span class="bar__v">6<span>/10</span></span></div><div class="bar" title="Hamstrings/Glutes: 6 von 12 Sätzen"><span class="bar__l">Hamstrings/Glutes</span><span class="bar__track"><span class="bar__fill" style="width:50%;display:block"></span></span><span class="bar__v">6<span>/12</span></span></div><div class="bar" title="Waden: 2 von 4 Sätzen"><span class="bar__l">Waden</span><span class="bar__track"><span class="bar__fill" style="width:50%;display:block"></span></span><span class="bar__v">2<span>/4</span></span></div><div class="bar" title="Core: 1 von 6 Sätzen"><span class="bar__l">Core</span><span class="bar__track"><span class="bar__fill" style="width:16.666666666666664%;display:block"></span></span><span class="bar__v">1<span>/6</span></span></div></div><p class="note">2 Einheiten · 31 Sätze ohne Aufwärmsätze · Soll = Vollvolumen Woche 3–11</p></div></details><details class="block block--wide block--fold"><summary class="block__h"><span>Gewicht 8 Wochen</span><span>7d 92,7 kg</span></summary><div class="block__body"><svg class="chart" viewBox="0 0 480 190" role="img" aria-label="Gewichtsverlauf, 7-Tage-Mittel zuletzt 92,7 kg"><g><line class="grid-line" x1="30" x2="440" y1="168" y2="168"></line><text x="24" y="171" text-anchor="end">91</text></g><g><line class="grid-line" x1="30" x2="440" y1="129" y2="129"></line><text x="24" y="132" text-anchor="end">92</text></g><g><line class="grid-line" x1="30" x2="440" y1="90" y2="90"></line><text x="24" y="93" text-anchor="end">93</text></g><g><line class="grid-line" x1="30" x2="440" y1="51" y2="51"></line><text x="24" y="54" text-anchor="end">94</text></g><g><line class="grid-line" x1="30" x2="440" y1="12" y2="12"></line><text x="24" y="15" text-anchor="end">95</text></g><text x="30" y="184" text-anchor="middle">20.08.</text><text x="134.36363636363637" y="184" text-anchor="middle">03.09.</text><text x="238.72727272727272" y="184" text-anchor="middle">17.09.</text><text x="343.09090909090907" y="184" text-anchor="middle">01.10.</text><path class="goal" d="M372.9 105.6 L380.4 109.5 L387.8 109.5 L395.3 113.4 L402.7 113.4 L410.2 117.3 L417.6 117.3 L425.1 121.2 L432.5 121.2 L440.0 125.1"></path><circle class="dot dot--raw" cx="30" cy="58.80000000000011" r="3"><title>20.08. 93,8 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="37.45454545454545" cy="47.10000000000022" r="3"><title>21.08. 94,1 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="52.36363636363636" cy="58.80000000000011" r="3"><title>23.08. 93,8 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="59.81818181818181" cy="66.60000000000022" r="3"><title>24.08. 93,6 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="67.27272727272728" cy="47.10000000000022" r="3"><title>25.08. 94,1 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="74.72727272727272" cy="54.89999999999978" r="3"><title>26.08. 93,9 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="82.18181818181819" cy="39.30000000000011" r="3"><title>27.08. 94,3 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="89.63636363636363" cy="58.80000000000011" r="3"><title>28.08. 93,8 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="97.0909090909091" cy="62.69999999999989" r="3"><title>29.08. 93,7 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="104.54545454545455" cy="66.60000000000022" r="3"><title>30.08. 93,6 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="119.45454545454545" cy="58.80000000000011" r="3"><title>01.09. 93,8 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="126.9090909090909" cy="54.89999999999978" r="3"><title>02.09. 93,9 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="134.36363636363637" cy="74.39999999999978" r="3"><title>03.09. 93,4 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="141.8181818181818" cy="54.89999999999978" r="3"><title>04.09. 93,9 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="149.27272727272725" cy="62.69999999999989" r="3"><title>05.09. 93,7 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="164.1818181818182" cy="78.30000000000011" r="3"><title>07.09. 93,3 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="171.63636363636363" cy="82.19999999999989" r="3"><title>08.09. 93,2 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="179.0909090909091" cy="66.60000000000022" r="3"><title>09.09. 93,6 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="186.54545454545453" cy="74.39999999999978" r="3"><title>10.09. 93,4 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="194" cy="62.69999999999989" r="3"><title>11.09. 93,7 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="201.45454545454547" cy="82.19999999999989" r="3"><title>12.09. 93,2 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="216.36363636363637" cy="66.60000000000022" r="3"><title>14.09. 93,6 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="238.72727272727272" cy="82.19999999999989" r="3"><title>17.09. 93,2 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="246.1818181818182" cy="86.10000000000022" r="3"><title>18.09. 93,1 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="253.63636363636363" cy="78.30000000000011" r="3"><title>19.09. 93,3 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="261.0909090909091" cy="70.5" r="3"><title>20.09. 93,5 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="268.5454545454545" cy="82.19999999999989" r="3"><title>21.09. 93,2 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="276" cy="70.5" r="3"><title>22.09. 93,5 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="290.90909090909093" cy="97.80000000000011" r="3"><title>24.09. 92,8 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="305.8181818181818" cy="101.69999999999989" r="3"><title>26.09. 92,7 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="313.27272727272725" cy="86.10000000000022" r="3"><title>27.09. 93,1 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="320.72727272727275" cy="82.19999999999989" r="3"><title>28.09. 93,2 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="328.1818181818182" cy="105.60000000000022" r="3"><title>29.09. 92,6 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="335.6363636363636" cy="82.19999999999989" r="3"><title>30.09. 93,2 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="343.09090909090907" cy="97.80000000000011" r="3"><title>01.10. 92,8 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="350.54545454545456" cy="97.80000000000011" r="3"><title>02.10. 92,8 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="358" cy="105.60000000000022" r="3"><title>03.10. 92,6 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="372.90909090909093" cy="113.39999999999978" r="3"><title>05.10. 92,4 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="380.3636363636364" cy="101.69999999999989" r="3"><title>06.10. 92,7 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="387.8181818181818" cy="101.69999999999989" r="3"><title>07.10. 92,7 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="417.6363636363636" cy="109.5" r="3"><title>11.10. 92,5 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="425.09090909090907" cy="90" r="3"><title>12.10. 93 kg (HEVY)</title></circle><circle class="dot dot--raw" cx="432.54545454545456" cy="113.39999999999978" r="3"><title>13.10. 92,4 kg (Apple Health)</title></circle><circle class="dot dot--raw" cx="440" cy="101.69999999999989" r="3"><title>14.10. 92,7 kg (HEVY)</title></circle><path class="line" d="M52.4 54.9 L59.8 58.8 L67.3 54.9 L74.7 54.9 L82.2 51.0 L89.6 54.9 L97.1 54.9 L104.5 54.9 L112.0 54.9 L119.5 54.9 L126.9 58.8 L134.4 62.7 L141.8 62.7 L149.3 62.7 L156.7 62.7 L164.2 62.7 L171.6 66.6 L179.1 70.5 L186.5 70.5 L194.0 70.5 L201.5 74.4 L208.9 74.4 L216.4 70.5 L223.8 70.5 L231.3 70.5 L238.7 74.4 L246.2 78.3 L253.6 78.3 L261.1 78.3 L268.5 78.3 L276.0 78.3 L283.5 78.3 L290.9 82.2 L298.4 78.3 L305.8 86.1 L313.3 86.1 L320.7 86.1 L328.2 93.9 L335.6 93.9 L343.1 93.9 L350.5 93.9 L358.0 93.9 L365.5 93.9 L372.9 101.7 L380.4 97.8 L387.8 101.7 L395.3 105.6 L402.7 105.6 L410.2 105.6 L417.6 105.6 L425.1 101.7 L432.5 105.6 L440.0 101.7"></path><g><circle class="dot dot--gold" cx="440" cy="101.69999999999989" r="4.5"></circle><text class="end-label" x="448" y="104.69999999999989">92,7</text></g></svg><div class="legend"><span><i></i> 7-Tage-Mittel</span><span><i style="width:6px;height:6px;border-radius:3px;background:var(--mute);border:0"></i> Tageswert</span><span><i class="goal"></i> Ziel 92,6 → 88</span></div></div></details><details class="block  block--fold"><summary class="block__h"><span>Sätze je Woche</span></summary><div class="block__body"><svg class="chart" viewBox="0 0 320 90" role="img" aria-label="Sätze je Woche, zuletzt 31"><line class="grid-line" x1="0" x2="320" y1="74" y2="74"></line><g><rect class="col" x="1.333333333333334" y="27.246753246753244" width="24" height="46.753246753246756" rx="2"></rect><title>KW 31 (27.07.): 60 Sätze, 4 Einheiten</title><text x="13.333333333333334" y="86" text-anchor="middle">31</text></g><g><rect class="col" x="28" y="34.259740259740255" width="24" height="39.740259740259745" rx="2"></rect><title>KW 32 (03.08.): 51 Sätze, 4 Einheiten</title></g><g><rect class="col" x="54.66666666666667" y="33.480519480519476" width="24" height="40.519480519480524" rx="2"></rect><title>KW 33 (10.08.): 52 Sätze, 4 Einheiten</title></g><g><rect class="col" x="81.33333333333333" y="17.8961038961039" width="24" height="56.103896103896105" rx="2"></rect><title>KW 34 (17.08.): 72 Sätze, 4 Einheiten</title></g><g><rect class="col" x="108" y="24.129870129870127" width="24" height="49.87012987012987" rx="2"></rect><title>KW 35 (24.08.): 64 Sätze, 4 Einheiten</title><text x="120" y="86" text-anchor="middle">35</text></g><g><rect class="col" x="134.66666666666669" y="21.792207792207794" width="24" height="52.20779220779221" rx="2"></rect><title>KW 36 (31.08.): 67 Sätze, 4 Einheiten</title></g><g><rect class="col" x="161.33333333333334" y="14" width="24" height="60" rx="2"></rect><title>KW 37 (07.09.): 77 Sätze, 4 Einheiten</title></g><g><rect class="col" x="188.00000000000003" y="32.7012987012987" width="24" height="41.2987012987013" rx="2"></rect><title>KW 38 (14.09.): 53 Sätze, 4 Einheiten</title></g><g><rect class="col" x="214.66666666666669" y="25.688311688311686" width="24" height="48.311688311688314" rx="2"></rect><title>KW 39 (21.09.): 62 Sätze, 4 Einheiten</title><text x="226.66666666666669" y="86" text-anchor="middle">39</text></g><g><rect class="col" x="241.33333333333334" y="74" width="24" height="0" rx="0"></rect><title>KW 40 (28.09.): 0 Sätze, 4 Einheiten</title></g><g><rect class="col" x="268" y="29.58441558441558" width="24" height="44.41558441558442" rx="2"></rect><title>KW 41 (05.10.): 57 Sätze, 4 Einheiten</title></g><g><rect class="col col--now" x="294.6666666666667" y="49.84415584415584" width="24" height="24.155844155844157" rx="2"></rect><title>KW 42 (12.10.): 31 Sätze, 4 Einheiten</title><text class="end-label" x="306.6666666666667" y="45.84415584415584" text-anchor="middle">31</text><text x="306.6666666666667" y="86" text-anchor="middle">42</text></g></svg></div></details><details class="block block--wide block--fold"><summary class="block__h"><span>Leitübungen 12 Wochen</span></summary><div class="block__body"><div class="lifts"><div class="lift"><div><div class="lift__t">Langhantel-Bankdrücken</div><div class="lift__s">87,5 kg × 6 · 14.10.</div></div><svg class="spark" viewBox="0 0 120 28" role="img" aria-label="Langhantel-Bankdrücken, 12 Wochen"><title>KW 27.07. 90 · KW 03.08. 93 · KW 10.08. 93 · KW 17.08. 96 · KW 24.08. 96 · KW 31.08. 99 · KW 14.09. 102 · KW 21.09. 102 · KW 28.09. 105 · KW 05.10. 105 · KW 12.10. 105</title><line class="goal" x1="0" x2="120" y1="11.8" y2="11.8"></line><path class="line" d="M3.0 25.0 L13.4 20.6 L23.7 20.6 L34.1 16.2 L44.5 16.2 L54.8 11.8 M75.5 7.4 L85.9 7.4 L96.3 3.0 L106.6 3.0 L117.0 3.0"></path><circle class="dot" cx="3" cy="25" r="0"></circle><circle class="dot" cx="13.363636363636363" cy="20.6" r="0"></circle><circle class="dot" cx="23.727272727272727" cy="20.6" r="0"></circle><circle class="dot" cx="34.09090909090909" cy="16.2" r="0"></circle><circle class="dot" cx="44.45454545454545" cy="16.2" r="0"></circle><circle class="dot" cx="54.81818181818182" cy="11.8" r="0"></circle><circle class="dot" cx="75.54545454545455" cy="7.4" r="0"></circle><circle class="dot" cx="85.9090909090909" cy="7.4" r="0"></circle><circle class="dot" cx="96.27272727272727" cy="3" r="0"></circle><circle class="dot" cx="106.63636363636364" cy="3" r="0"></circle><circle class="dot" cx="117" cy="3" r="3"></circle></svg><div class="lift__v"><b>105</b> kg<span class="soll">Boss 99 kg</span></div></div><div class="lift"><div><div class="lift__t">Klimmzug ohne Zusatz</div><div class="lift__s">letzter Satz · 14.10.</div></div><svg class="spark" viewBox="0 0 120 28" role="img" aria-label="Klimmzug ohne Zusatz, 12 Wochen"><title>KW 27.07. 9 · KW 03.08. 9 · KW 10.08. 10 · KW 17.08. 10 · KW 24.08. 11 · KW 31.08. 11 · KW 07.09. 11 · KW 14.09. 12 · KW 21.09. 12 · KW 28.09. 13 · KW 05.10. 13 · KW 12.10. 13</title><line class="goal" x1="0" x2="120" y1="3" y2="3"></line><path class="line" d="M3.0 25.0 L13.4 25.0 L23.7 21.9 L34.1 21.9 L44.5 18.7 L54.8 18.7 L65.2 18.7 L75.5 15.6 L85.9 15.6 L96.3 12.4 L106.6 12.4 L117.0 12.4"></path><circle class="dot" cx="3" cy="25" r="0"></circle><circle class="dot" cx="13.363636363636363" cy="25" r="0"></circle><circle class="dot" cx="23.727272727272727" cy="21.857142857142858" r="0"></circle><circle class="dot" cx="34.09090909090909" cy="21.857142857142858" r="0"></circle><circle class="dot" cx="44.45454545454545" cy="18.714285714285715" r="0"></circle><circle class="dot" cx="54.81818181818182" cy="18.714285714285715" r="0"></circle><circle class="dot" cx="65.18181818181819" cy="18.714285714285715" r="0"></circle><circle class="dot" cx="75.54545454545455" cy="15.571428571428571" r="0"></circle><circle class="dot" cx="85.9090909090909" cy="15.571428571428571" r="0"></circle><circle class="dot" cx="96.27272727272727" cy="12.428571428571429" r="0"></circle><circle class="dot" cx="106.63636363636364" cy="12.428571428571429" r="0"></circle><circle class="dot" cx="117" cy="12.428571428571429" r="3"></circle></svg><div class="lift__v"><b>13</b> Wdh<span class="soll">Boss 16 Wdh</span></div></div><div class="lift"><div><div class="lift__t">Klimmzug gewichtet</div><div class="lift__s">+10 kg × 8 · System 103 kg · e1RM 130</div></div><svg class="spark" viewBox="0 0 120 28" role="img" aria-label="Klimmzug gewichtet, 12 Wochen"><title>KW 27.07. 2,5 · KW 10.08. 2,5 · KW 17.08. 5 · KW 24.08. 5 · KW 31.08. 5 · KW 07.09. 5 · KW 14.09. 7,5 · KW 21.09. 7,5 · KW 28.09. 7,5 · KW 05.10. 7,5 · KW 12.10. 10</title><path class="line" d="M3.0 25.0 M23.7 25.0 L34.1 17.7 L44.5 17.7 L54.8 17.7 L65.2 17.7 L75.5 10.3 L85.9 10.3 L96.3 10.3 L106.6 10.3 L117.0 3.0"></path><circle class="dot" cx="3" cy="25" r="0"></circle><circle class="dot" cx="23.727272727272727" cy="25" r="0"></circle><circle class="dot" cx="34.09090909090909" cy="17.666666666666664" r="0"></circle><circle class="dot" cx="44.45454545454545" cy="17.666666666666664" r="0"></circle><circle class="dot" cx="54.81818181818182" cy="17.666666666666664" r="0"></circle><circle class="dot" cx="65.18181818181819" cy="17.666666666666664" r="0"></circle><circle class="dot" cx="75.54545454545455" cy="10.333333333333332" r="0"></circle><circle class="dot" cx="85.9090909090909" cy="10.333333333333332" r="0"></circle><circle class="dot" cx="96.27272727272727" cy="10.333333333333332" r="0"></circle><circle class="dot" cx="106.63636363636364" cy="10.333333333333332" r="0"></circle><circle class="dot" cx="117" cy="3" r="3"></circle></svg><div class="lift__v"><b>10</b> kg<span class="soll">Zusatz kg</span></div></div><div class="lift"><div><div class="lift__t">Brust Dip gewichtet</div><div class="lift__s">+15 kg × 8 · System 108 kg · e1RM 136</div></div><svg class="spark" viewBox="0 0 120 28" role="img" aria-label="Brust Dip gewichtet, 12 Wochen"><title>KW 03.08. 7,5 · KW 10.08. 10 · KW 17.08. 10 · KW 24.08. 10 · KW 07.09. 12,5 · KW 21.09. 15 · KW 28.09. 15 · KW 05.10. 15</title><line class="goal" x1="0" x2="120" y1="3" y2="3"></line><path class="line" d="M13.4 25.0 L23.7 19.5 L34.1 19.5 L44.5 19.5 M65.2 14.0 M85.9 8.5 L96.3 8.5 L106.6 8.5"></path><circle class="dot" cx="13.363636363636363" cy="25" r="0"></circle><circle class="dot" cx="23.727272727272727" cy="19.5" r="0"></circle><circle class="dot" cx="34.09090909090909" cy="19.5" r="0"></circle><circle class="dot" cx="44.45454545454545" cy="19.5" r="0"></circle><circle class="dot" cx="65.18181818181819" cy="14" r="0"></circle><circle class="dot" cx="85.9090909090909" cy="8.5" r="0"></circle><circle class="dot" cx="96.27272727272727" cy="8.5" r="0"></circle><circle class="dot" cx="106.63636363636364" cy="8.5" r="3"></circle></svg><div class="lift__v"><b>15</b> kg<span class="soll">Boss 18 kg</span></div></div><div class="lift"><div><div class="lift__t">Squat (Smith Machine)</div><div class="lift__s">87,5 kg × 8 · 14.10.</div></div><svg class="spark" viewBox="0 0 120 28" role="img" aria-label="Squat (Smith Machine), 12 Wochen"><title>KW 27.07. 88,7 · KW 03.08. 91,8 · KW 17.08. 95 · KW 28.09. 104,5 · KW 05.10. 107,7 · KW 12.10. 110,8</title><line class="goal" x1="0" x2="120" y1="5.7873303167420795" y2="5.7873303167420795"></line><path class="line" d="M3.0 25.0 L13.4 21.9 M34.1 18.7 M96.3 9.3 L106.6 6.1 L117.0 3.0"></path><circle class="dot" cx="3" cy="25" r="0"></circle><circle class="dot" cx="13.363636363636363" cy="21.91402714932127" r="0"></circle><circle class="dot" cx="34.09090909090909" cy="18.728506787330318" r="0"></circle><circle class="dot" cx="96.27272727272727" cy="9.271493212669682" r="0"></circle><circle class="dot" cx="106.63636363636364" cy="6.085972850678728" r="0"></circle><circle class="dot" cx="117" cy="3" r="3"></circle></svg><div class="lift__v"><b>110,8</b> kg<span class="soll">Boss 108 kg</span></div></div><div class="lift"><div><div class="lift__t">Iso-Lat Bankdrücken</div><div class="lift__s">75 kg × 8 · 14.10.</div></div><svg class="spark" viewBox="0 0 120 28" role="img" aria-label="Iso-Lat Bankdrücken, 12 Wochen"><title>KW 27.07. 82,3 · KW 10.08. 85,5 · KW 17.08. 85,5 · KW 24.08. 88,7 · KW 31.08. 88,7 · KW 21.09. 91,8 · KW 28.09. 95 · KW 05.10. 95 · KW 12.10. 95</title><path class="line" d="M3.0 25.0 M23.7 19.5 L34.1 19.5 L44.5 13.9 L54.8 13.9 M85.9 8.5 L96.3 3.0 L106.6 3.0 L117.0 3.0"></path><circle class="dot" cx="3" cy="25.000000000000004" r="0"></circle><circle class="dot" cx="23.727272727272727" cy="19.456692913385822" r="0"></circle><circle class="dot" cx="34.09090909090909" cy="19.456692913385822" r="0"></circle><circle class="dot" cx="44.45454545454545" cy="13.913385826771647" r="0"></circle><circle class="dot" cx="54.81818181818182" cy="13.913385826771647" r="0"></circle><circle class="dot" cx="85.9090909090909" cy="8.543307086614178" r="0"></circle><circle class="dot" cx="96.27272727272727" cy="3" r="0"></circle><circle class="dot" cx="106.63636363636364" cy="3" r="0"></circle><circle class="dot" cx="117" cy="3" r="3"></circle></svg><div class="lift__v"><b>95</b> kg<span class="soll">e1RM</span></div></div></div></div></details><details class="block  block--fold"><summary class="block__h"><span>Laufen</span></summary><div class="block__body"><div class="chips"><span class="chip">Lauftage <b>1</b><span class="mute"> · Di</span></span></div><ul class="list" style="margin-top:10px"><li><span>Di 13.10. Laufen</span><span class="mute">28 min · 5,4 km</span></li></ul></div></details><details class="block block--wide block--fold"><summary class="block__h"><span>Umfänge</span></summary><div class="block__body"><table class="tbl"><thead><tr><th>Datum</th><th>kg</th><th>Taille</th><th>Brust</th><th>Arm</th></tr></thead><tbody><tr><td>12.10.</td><td>92,1</td><td>95,5</td><td>108</td><td>39,5</td></tr><tr><td>05.10.</td><td>92,6</td><td>96,5</td><td>108</td><td>39,5</td></tr><tr><td>07.09.</td><td>93,8</td><td>97</td><td>107,5</td><td>39</td></tr><tr class="delta"><td>Δ</td><td>−1,7</td><td>−1,5</td><td>+0,5</td><td>+0,5</td></tr></tbody></table></div></details><details class="block  block--fold"><summary class="block__h"><span>Erholung</span></summary><div class="block__body"><div class="ampel ampel--gelb" role="status" aria-label="Erholungsampel Gelb">Gelb</div><div class="chips"><span class="chip">RHR <b>58</b> / 7d 55 / Basis 53</span><span class="chip">HRV <b>61</b> / 7d 66</span><span class="chip">Schlaf <b>6,8 h</b></span></div><p class="reasons">Ruhepuls +3 über 7d-Mittel · HRV 92 % des 7d-Mittels · Baseline 19/28 Tage, Stopp noch gesperrt</p></div></details></div></details></div><footer class="ftr"><div class="ftr__stand mono">HEVY 06:44 · STAND 07:12<div class="ftr__msg">HEVY aktualisiert.</div></div><div class="ftr__btns"><form action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit" class="btn" aria-busy="false">Aktualisieren</button></form><form action="javascript:throw new Error(&#x27;React form unexpectedly submitted.&#x27;)"><button type="submit" class="btn">Abmelden</button></form></div></footer></main><script>addEventListener("submit",function(a){if(!a.defaultPrevented){var c=a.target,d=a.submitter,e=c.action,b=d;if(d){var f=d.getAttribute("formAction");null!=f&&(e=f,b=null)}"javascript:throw new Error('React form unexpectedly submitted.')"===e&&(a.preventDefault(),b?(a=document.createElement("input"),a.name=b.name,a.value=b.value,b.parentNode.insertBefore(a,b),b=new FormData(c),a.parentNode.removeChild(a)):b=new FormData(c),a=c.ownerDocument||c,(a.$$reactFormReplay=a.$$reactFormReplay||[]).push(c,d,b))}});</script></body>
+</html>

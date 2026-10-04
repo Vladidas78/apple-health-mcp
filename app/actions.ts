@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { optionalEnv } from "@/lib/env";
 import { syncHevy } from "@/lib/hevy/sync";
 import { lastHevySync } from "@/lib/dashboard/queries";
+import { awardXp } from "@/lib/coach/xp";
 import { verifyWeb, WEB_SESSION_COOKIE } from "@/lib/web-auth";
 
 const SYNC_THROTTLE_MS = 10 * 60_000;
@@ -31,6 +32,8 @@ export async function refreshHevy(): Promise<void> {
       await syncHevy(db, (input, init) => fetch(input, init), { apiKey });
       await db.execute(sql`UPDATE hevy_workouts SET synced_at = now()
         WHERE id = (SELECT id FROM hevy_workouts ORDER BY start_time DESC NULLS LAST LIMIT 1)`);
+      // Award XP for whatever the sync brought in; a failure here keeps the sync "ok".
+      await awardXp(db).catch((e) => console.error("[dashboard/refresh] xp:", e instanceof Error ? e.message : e));
     }
   } catch (err) {
     console.error("[dashboard/refresh] error:", err instanceof Error ? err.message : err);

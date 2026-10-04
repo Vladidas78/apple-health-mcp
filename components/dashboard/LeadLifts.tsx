@@ -40,9 +40,9 @@ function sub(l: LeadLiftData): string {
   return `${set} · System ${num(b.systemLoad, 0)} kg · e1RM ${num(b.e1rm, 0)}`;
 }
 
-export function LeadLifts({ data }: { data: Loaded<LeadLiftData[]> }) {
+export function LeadLifts({ data, fold }: { data: Loaded<LeadLiftData[]>; fold?: boolean }) {
   return (
-    <Block title="Leitübungen 12 Wochen" wide>
+    <Block fold={fold} title="Leitübungen 12 Wochen" wide>
       {fromLoader(data, (ls) =>
         ls.every((l) => !l.latest) ? (
           <Empty>Noch keine Sätze an den Leitübungen in den letzten 12 Wochen.</Empty>

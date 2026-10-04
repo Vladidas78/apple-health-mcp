@@ -7,8 +7,9 @@ import { optionalEnv } from "@/lib/env";
 import { verifyWeb, WEB_SESSION_COOKIE } from "@/lib/web-auth";
 import { weekStartOf } from "@/lib/dashboard/time";
 import {
-  lastHevySync, leadLifts, measurements, recovery, runWeek, trainingWeek, weeklyVolume, weightTrend,
+  bossProgress, lastHevySync, leadLifts, measurements, recovery, runWeek, todayState, trainingWeek, weekSlots, weeklyVolume, weightTrend,
 } from "@/lib/dashboard/queries";
+import { awardXp, setBaselines, xpLedger } from "@/lib/coach/xp";
 import { Dashboard, type DashboardData } from "@/components/dashboard/Dashboard";
 import type { Loaded } from "@/components/dashboard/Block";
 import type { SyncStatus } from "@/components/dashboard/Header";
@@ -42,7 +43,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
   const weekStart = weekStartOf(now);
   const db = getDb();
 
-  const [weight, rec, training, lifts, meas, run, volume, hevySync] = await Promise.all([
+  // Ledger first, so the hero shows what this visit earned. Both are idempotent
+  // and must never take the page down.
+  try {
+    await setBaselines(db, now);
+    await awardXp(db, now);
+  } catch (e) {
+    console.error("[dashboard] xp/baselines failed:", e instanceof Error ? e.message : e);
+  }
+
+  const [weight, rec, training, lifts, meas, run, volume, xp, slots, boss, today, hevySync] = await Promise.all([
     load(weightTrend(db, 8, now)),
     load(recovery(db, now)),
     load(trainingWeek(db, weekStart)),
@@ -50,10 +60,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
     load(measurements(db)),
     load(runWeek(db, weekStart)),
     load(weeklyVolume(db, 12, now)),
+    load(xpLedger(db, now)),
+    load(weekSlots(db, weekStart)),
+    load(bossProgress(db, now)),
+    load(todayState(db, now)),
     lastHevySync(db).catch(() => null),
   ]);
 
-  const data: DashboardData = { now, hevySync, weight, recovery: rec, training, lifts, measurements: meas, run, volume };
+  const data: DashboardData = { now, hevySync, weight, recovery: rec, training, lifts, measurements: meas, run, volume, xp, slots, boss, today };
   const canRefresh = !!optionalEnv("HEVY_API_KEY");
   return <Dashboard data={data} refreshAction={canRefresh ? refreshHevy : undefined} logoutAction={logout} status={status} />;
 }

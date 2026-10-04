@@ -1,11 +1,11 @@
 import type { RunWeekData } from "@/lib/dashboard/queries";
 import { WEEKDAYS_DE, fmtDay, weekdayIndex } from "@/lib/dashboard/time";
 import { minutes, num } from "./format";
-import { Block, Empty, fromLoader, type Loaded } from "./Block";
+import { Block, fromLoader, type Loaded } from "./Block";
 
-export function RunWeek({ data }: { data: Loaded<RunWeekData> }) {
+export function RunWeek({ data, fold }: { data: Loaded<RunWeekData>; fold?: boolean }) {
   return (
-    <Block title="Laufen">
+    <Block fold={fold} title="Laufen">
       {fromLoader(data, (r) => (
         <>
           {r.coachWeek ? (
@@ -16,9 +16,7 @@ export function RunWeek({ data }: { data: Loaded<RunWeekData> }) {
               {r.coachWeek.hardSessions !== null ? <span className="chip">{r.coachWeek.hardSessions} hart</span> : null}
               <span className="chip chip--mute">{r.coachWeek.source ?? "coach"}</span>
             </div>
-          ) : (
-            <Empty>Strava-Aggregat folgt (coach_weeks leer).</Empty>
-          )}
+          ) : null}
           <div className="chips">
             <span className="chip">
               Lauftage <b>{r.runDays.length}</b>

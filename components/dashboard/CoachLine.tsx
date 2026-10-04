@@ -1,14 +1,13 @@
 import type { RecoveryData, TrainingWeekData } from "@/lib/dashboard/queries";
-import { PLAN } from "@/lib/coach/plan-defaults";
+import { PLAN, planWeek } from "@/lib/coach/plan-defaults";
 import { fmtDay, isoWeek, weekdayIndex } from "@/lib/dashboard/time";
 import { num } from "./format";
 import type { Loaded } from "./Block";
-import { planWeek } from "./ScoreCard";
 
 // TODO(coach_assessments): the text of this block must come from
-// coach_assessments.text (first two sentences) plus its evidence chips. Until
+// coach_assessments.text (first two sentences) plus its evidence chip. Until
 // the coach writes assessments, a fixed rule produces it: plan week × weekday
-// × traffic light. Every sentence here carries a number, nothing else.
+// × traffic light. Two sentences, one chip (Gina v2), every sentence a number.
 
 const WEEK1 = ["PUSH 50 %, 12 Sätze, RPE ≤ 7", "PULL 50 %, 2 Sätze je Übung, RPE ≤ 7", "LEGS 50 %, Squat 2 × 8 mit 60 kg, ohne Hip Thrust", "frei", "CALI 50 % ohne Zusatzgewicht, RPE ≤ 7", "30 min locker, Z1/Z2", "frei"];
 const STANDARD = ["PUSH, 20 Sätze, RIR 2", "LEGS, 21 Sätze, RIR 2", "PULL, 22 Sätze, RIR 2", "Intervall 5–6 × 3 min im 5k-Tempo", "CALI + Beine light, 21 Sätze", "Z2-Lauf 40–50 min", "frei, Check-in unter 5 min"];
@@ -44,28 +43,31 @@ export function coachText(today: string, recovery: RecoveryData | null, training
     }
   }
 
-  if (recovery && recovery.rhr.today !== null) chips.push(`HEALTH RHR ${num(recovery.rhr.today, 0)} / 7d ${num(recovery.rhr.mean7, 0)}`);
-  else if (recovery && recovery.hrv.today !== null) chips.push(`HEALTH HRV ${num(recovery.hrv.today, 0)} / 7d ${num(recovery.hrv.mean7, 0)}`);
-  else chips.push("HEALTH keine frischen Werte");
-  if (training) chips.push(`HEVY KW ${isoWeek(today)} · ${training.sessions.length} Sessions · ${training.totalSets} Sätze`);
-  return { lines, chips };
+  // One evidence chip: the traffic light's when it changed the advice, else HEVY.
+  const ampel = recovery?.ampel ?? "unbekannt";
+  const healthChip = recovery && recovery.rhr.today !== null
+    ? `HEALTH RHR ${num(recovery.rhr.today, 0)} / 7d ${num(recovery.rhr.mean7, 0)}`
+    : recovery && recovery.hrv.today !== null
+      ? `HEALTH HRV ${num(recovery.hrv.today, 0)} / 7d ${num(recovery.hrv.mean7, 0)}`
+      : "HEALTH keine frischen Werte";
+  const hevyChip = training ? `HEVY KW ${isoWeek(today)} · ${training.sessions.length} Sessions · ${training.totalSets} Sätze` : null;
+  chips.push(ampel === "gelb" || ampel === "stopp" || !hevyChip ? healthChip : hevyChip);
+  return { lines: lines.slice(0, 2), chips: chips.slice(0, 1) };
 }
 
 export function CoachLine({ today, recovery, training }: { today: string; recovery: Loaded<RecoveryData>; training: Loaded<TrainingWeekData> }) {
   const { lines, chips } = coachText(today, recovery.ok ? recovery.data : null, training.ok ? training.data : null);
   return (
-    <section className="block block--wide" style={{ padding: 0 }}>
-      <div className="coach">
-        <div className="coach__prefix">&gt; COACH</div>
-        {lines.map((l, i) => (
-          <p className="coach__line" key={i}>{l}</p>
+    <div className="coach">
+      <div className="coach__prefix">&gt; COACH</div>
+      {lines.map((l, i) => (
+        <p className="coach__line" key={i}>{l}</p>
+      ))}
+      <div className="chips coach__chips">
+        {chips.map((c) => (
+          <span className="chip" key={c}>{c}</span>
         ))}
-        <div className="chips coach__chips">
-          {chips.map((c) => (
-            <span className="chip" key={c}>{c}</span>
-          ))}
-        </div>
       </div>
-    </section>
+    </div>
   );
 }

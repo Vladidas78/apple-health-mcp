@@ -1,22 +1,31 @@
 // Render the dashboard with invented fixture data to a static HTML file, so the
 // design can be checked (and screenshotted) without a database or a login.
-// Pure script, never a route: `npm run preview:dashboard [--empty] [out.html]`.
+// Pure script, never a route:
+//   npm run preview:dashboard [--empty | --after-push | --rest] [--stats] [out.html]
+// --after-push: Monday evening after PUSH with a PR (hero "+180 XP", level 2).
+// --rest: Sunday, no events, week 6/6. --stats: STATS section rendered open.
 import { writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Dashboard, type DashboardData } from "@/components/dashboard/Dashboard";
-import type { LeadLiftData, WeightTrendData } from "@/lib/dashboard/queries";
-import { goalAt } from "@/lib/dashboard/queries";
-import { LEAD_LIFTS, MUSCLE_GROUPS, BODYWEIGHT_KG, epley } from "@/lib/coach/plan-defaults";
+import type { BossProgressData, LeadLiftData, TodayState, WeekSlotsData, WeightTrendData } from "@/lib/dashboard/queries";
+import { goalAt, heroMode } from "@/lib/dashboard/queries";
+import { levelFor, type XpLedger } from "@/lib/coach/xp";
+import { fillSlots, type SlotSession } from "@/lib/coach/slots";
+import { LEAD_LIFTS, MUSCLE_GROUPS, BODYWEIGHT_KG, HEVY_ROUTINES, epley, hevyRoutineLink } from "@/lib/coach/plan-defaults";
 import { addDays, berlinDay, weekStartOf } from "@/lib/dashboard/time";
 
 const args = process.argv.slice(2);
 const empty = args.includes("--empty");
+const afterPush = args.includes("--after-push");
+const rest = args.includes("--rest");
+const statsOpen = args.includes("--stats");
 const out = resolve(args.find((a) => !a.startsWith("--")) ?? "dashboard-preview.html");
 
-// Wednesday in plan week 2, 07:12 Berlin.
-const NOW = new Date("2026-10-14T05:12:00Z");
+// Default: Wednesday in plan week 2, 07:12 Berlin, before PULL.
+// --after-push: Monday 12.10. 20:30 Berlin. --rest: Sunday 18.10. 10:00 Berlin.
+const NOW = afterPush ? new Date("2026-10-12T18:30:00Z") : rest ? new Date("2026-10-18T08:00:00Z") : new Date("2026-10-14T05:12:00Z");
 const TODAY = berlinDay(NOW);
 const WEEK = weekStartOf(NOW);
 
@@ -59,8 +68,9 @@ function liftsFixture(): LeadLiftData[] {
     const weeks = Array.from({ length: 12 }, (_, i) => {
       const weekStart = addDays(firstWeek, i * 7);
       if (rnd() < 0.2 || (l.key === "squat" && i > 3 && i < 9)) return { weekStart, best: null };
-      const weightKg = l.mode === "reps" ? 0 : Math.round((b.w + i * b.step) / 2.5) * 2.5;
-      const reps = l.mode === "reps" ? Math.round(b.r + i * b.step) : b.r;
+      const k = l.key === "bench" && i === 11 ? 9 : i; // bench: latest week below the best → "Bank fehlt 2,5 kg"
+      const weightKg = l.mode === "reps" ? 0 : Math.round((b.w + k * b.step) / 2.5) * 2.5;
+      const reps = l.mode === "reps" ? Math.round(b.r + k * b.step) : b.r;
       const systemLoad = l.mode === "e1rm" ? weightKg : weightKg + BODYWEIGHT_KG;
       const e1rm = Math.round(epley(systemLoad, reps) * 10) / 10;
       const value = l.mode === "e1rm" ? e1rm : l.mode === "reps" ? reps : weightKg;
@@ -78,26 +88,98 @@ function liftsFixture(): LeadLiftData[] {
   });
 }
 
-const rhr = { today: 58, todayDay: TODAY, mean7: 55, baseline28: 53, baselineDays: 19 };
-const hrv = { today: 61, todayDay: TODAY, mean7: 66, baseline28: 64, baselineDays: 19 };
+const rhr = rest ? { today: 54, todayDay: TODAY, mean7: 55, baseline28: 53, baselineDays: 23 } : { today: 58, todayDay: TODAY, mean7: 55, baseline28: 53, baselineDays: 19 };
+const hrv = rest ? { today: 68, todayDay: TODAY, mean7: 66, baseline28: 64, baselineDays: 23 } : { today: 61, todayDay: TODAY, mean7: 66, baseline28: 64, baselineDays: 19 };
+const ampelFx = rest ? { ampel: "gruen" as const, reasons: [] as string[] } : { ampel: "gelb" as const, reasons: ["Ruhepuls +3 über 7d-Mittel", "HRV 92 % des 7d-Mittels", "Baseline 19/28 Tage, Stopp noch gesperrt"] };
+
+// ---- v2: XP ledger, slots, boss bars, today ---------------------------------
+
+const ses = (id: string, title: string, day: string, routineKey: SlotSession["routineKey"], kind: "hevy" | "run" = "hevy", sets = 16, minutes = 52): SlotSession =>
+  ({ id, title, day, kind, routineKey, sets, minutes });
+
+function slotsFixture(): WeekSlotsData {
+  const sessions = afterPush
+    ? [ses("a", HEVY_ROUTINES.PUSH.title, WEEK, "PUSH", "hevy", 18)]
+    : rest
+      ? [ses("a", HEVY_ROUTINES.PUSH.title, WEEK, "PUSH"), ses("b", HEVY_ROUTINES.LEGS.title, addDays(WEEK, 1), "LEGS"), ses("c", HEVY_ROUTINES.PULL.title, addDays(WEEK, 3), "PULL"),
+         ses("r1", "Laufen", addDays(WEEK, 2), null, "run", 0, 32), ses("d", HEVY_ROUTINES.CALI.title, addDays(WEEK, 4), "CALI"), ses("r2", "Laufen", addDays(WEEK, 5), null, "run", 0, 48)]
+      : [ses("a", "Push - A", WEEK, "PUSH"), ses("b", "Lower A", addDays(WEEK, 1), "LEGS")];
+  const slots = fillSlots(WEEK, sessions);
+  return { weekStart: WEEK, slots, filled: slots.filter((x) => x.filled).length, weeksCounted: 2, weeksComplete: rest ? 1 : 0 };
+}
+
+const PR_META = { lift: "bench", short: "Bank", mode: "e1rm", day: TODAY, old: { weightKg: 80, reps: 5, value: 93.3, e1rm: 93.3 }, new: { weightKg: 82.5, reps: 5, value: 96.3, e1rm: 96.3 } };
+function xpFixture(): XpLedger {
+  const at = (h: number) => new Date(`${TODAY}T${String(h).padStart(2, "0")}:00:00Z`);
+  const today = afterPush
+    ? [
+        { id: 11, kind: "session" as const, source: "hevy_workout", sourceId: "a", xp: 100, weekStart: WEEK, awardedAt: at(18), meta: { title: HEVY_ROUTINES.PUSH.title, routine: "PUSH", day: TODAY, sets: 18 } },
+        { id: 12, kind: "pr" as const, source: "lift", sourceId: "bench:a", xp: 80, weekStart: WEEK, awardedAt: at(18), meta: PR_META },
+      ]
+    : [];
+  const total = afterPush ? 620 : rest ? 1310 : 440;
+  return {
+    total, week: afterPush ? 180 : rest ? 870 : 200, weekStart: WEEK, level: levelFor(total),
+    today, todayXp: today.reduce((a, e) => a + e.xp, 0),
+    prsThisWeek: afterPush ? [today[1]] : [],
+  };
+}
+
+function bossFixture(): BossProgressData {
+  const row = (key: BossProgressData["rows"][number]["key"], label: string, unit: "kg" | "Wdh" | "cm", baseline: number, current: number | null, target: number, decreasing = false) => {
+    const pct = current === null ? null : Math.max(0, Math.min(100, Math.round(((current - baseline) / (target - baseline)) * 100)));
+    return { key, label, unit, baseline, baselineDay: "2026-10-06", provisional: !rest, current, currentDay: TODAY, target, pct, decreasing };
+  };
+  return {
+    windowEnd: "2026-10-19",
+    rows: [
+      row("bench", "Bank", "kg", 88, afterPush ? 96.3 : 93.3, 99), // targets as the loader computes them from plan-defaults
+      row("pullup_bw", "Klimmzüge", "Wdh", 11, 12, 16),
+      row("dip", "Dips", "kg", 7.5, 10, 17.5),
+      row("squat", "Squat", "kg", 84, 88.7, 108),
+      row("waist", "Taille", "cm", 96.5, 95.5, 92.5, true),
+      row("weight", "Gewicht", "kg", 92.6, 92.1, 88.5, true),
+    ],
+  };
+}
+
+function todayFixture(): TodayState {
+  const xp = xpFixture();
+  const weekday = (new Date(`${TODAY}T12:00:00Z`).getUTCDay() + 6) % 7;
+  const key = afterPush ? "PUSH" : rest ? null : "PULL";
+  const slot = key ? { key: key as "PUSH" | "PULL", label: key } : null;
+  const routine = key ? { key: key as "PUSH" | "PULL", id: HEVY_ROUTINES[key as "PUSH" | "PULL"].id, title: HEVY_ROUTINES[key as "PUSH" | "PULL"].title, href: hevyRoutineLink(HEVY_ROUTINES[key as "PUSH" | "PULL"].id) } : null;
+  const base = {
+    today: TODAY, weekday, planWeek: 2, slot, routine,
+    done: afterPush ? [ses("a", HEVY_ROUTINES.PUSH.title, TODAY, "PUSH", "hevy", 18)] : [],
+    events: xp.today, todayXp: xp.todayXp,
+  };
+  return { ...base, hero: heroMode(base, "unbekannt") };
+}
 
 const full: DashboardData = {
   now: NOW,
-  hevySync: new Date("2026-10-14T02:00:00Z"),
+  hevySync: new Date(NOW.getTime() - (rest ? 26 * 3_600_000 : 28 * 60_000)),
   weight: { ok: true, data: weightFixture() },
-  recovery: { ok: true, data: { ampel: "gelb", reasons: ["Ruhepuls +3 über 7d-Mittel", "HRV 92 % des 7d-Mittels", "Baseline 19/28 Tage, Stopp noch gesperrt"], baselineComplete: false, rhr, hrv, sleep: { hours: 6.8, day: TODAY } } },
+  recovery: { ok: true, data: { ...ampelFx, baselineComplete: false, rhr, hrv, sleep: { hours: rest ? 7.6 : 6.8, day: TODAY } } },
   training: {
     ok: true,
     data: (() => {
-      const sessions = [
-        { id: "a", title: "Push - A", day: WEEK, weekday: 0, minutes: 52, sets: 15 },
-        { id: "b", title: "Lower A", day: addDays(WEEK, 1), weekday: 1, minutes: 58, sets: 16 },
-        { id: "c", title: "Pull - A", day: addDays(WEEK, 2), weekday: 2, minutes: 49, sets: 16 },
-      ];
+      const sessions = afterPush
+        ? [{ id: "a", title: HEVY_ROUTINES.PUSH.title, day: WEEK, weekday: 0, minutes: 61, sets: 18 }]
+        : [
+            { id: "a", title: "Push - A", day: WEEK, weekday: 0, minutes: 52, sets: 15 },
+            { id: "b", title: "Lower A", day: addDays(WEEK, 1), weekday: 1, minutes: 58, sets: 16 },
+            ...(rest ? [{ id: "c", title: "Pull - A", day: addDays(WEEK, 3), weekday: 3, minutes: 49, sets: 16 }, { id: "d", title: HEVY_ROUTINES.CALI.title, day: addDays(WEEK, 4), weekday: 4, minutes: 50, sets: 21 }] : []),
+          ];
       const days = Array.from({ length: 7 }, (_, i) => sessions.filter((s) => s.weekday === i));
-      const have: Record<string, number> = { brust: 8, lat: 7, oberer_ruecken: 4, schultern: 5, bizeps: 4, trizeps: 4, quads: 6, hamstrings_glutes: 6, waden: 2, core: 1 };
+      const have: Record<string, number> = afterPush
+        ? { brust: 9, schultern: 5, trizeps: 4 }
+        : rest
+          ? { brust: 15, lat: 12, oberer_ruecken: 6, schultern: 10, bizeps: 5, trizeps: 6, quads: 10, hamstrings_glutes: 12, waden: 4, core: 6 }
+          : { brust: 8, lat: 7, oberer_ruecken: 4, schultern: 5, bizeps: 4, trizeps: 4, quads: 6, hamstrings_glutes: 6, waden: 2, core: 1 };
       return {
-        weekStart: WEEK, days, sessions, totalSets: 47,
+        weekStart: WEEK, days, sessions, totalSets: afterPush ? 18 : rest ? 86 : 31,
         muscles: MUSCLE_GROUPS.map((g) => ({ key: g.key, label: g.label, sets: have[g.key] ?? 0, target: g.target })),
       };
     })(),
@@ -118,14 +200,20 @@ const full: DashboardData = {
   run: {
     ok: true,
     data: {
-      weekStart: WEEK, coachWeek: null, runDays: [addDays(WEEK, 3)],
-      appleWorkouts: [{ id: "r1", name: "Laufen", day: addDays(WEEK, 3), minutes: 28, km: 5.4 }],
+      weekStart: WEEK, coachWeek: null, runDays: afterPush ? [] : rest ? [addDays(WEEK, 2), addDays(WEEK, 5)] : [addDays(WEEK, 1)],
+      appleWorkouts: afterPush ? [] : rest
+        ? [{ id: "r1", name: "Laufen", day: addDays(WEEK, 2), minutes: 32, km: 6.1 }, { id: "r2", name: "Laufen", day: addDays(WEEK, 5), minutes: 48, km: 8.7 }]
+        : [{ id: "r1", name: "Laufen", day: addDays(WEEK, 1), minutes: 28, km: 5.4 }],
     },
   },
   volume: {
     ok: true,
-    data: { weeks: Array.from({ length: 12 }, (_, i) => ({ weekStart: addDays(WEEK, (i - 11) * 7), sets: i === 11 ? 47 : i === 9 ? 0 : 50 + Math.round(rnd() * 30), sessions: 4 })) },
+    data: { weeks: Array.from({ length: 12 }, (_, i) => ({ weekStart: addDays(WEEK, (i - 11) * 7), sets: i === 11 ? (afterPush ? 18 : rest ? 86 : 31) : i === 9 ? 0 : 50 + Math.round(rnd() * 30), sessions: 4 })) },
   },
+  xp: { ok: true, data: xpFixture() },
+  slots: { ok: true, data: slotsFixture() },
+  boss: { ok: true, data: bossFixture() },
+  today: { ok: true, data: todayFixture() },
 };
 
 // Empty state: fresh deploy with an empty database and one loader that failed.
@@ -139,11 +227,17 @@ const none: DashboardData = {
   measurements: { ok: true, data: { rows: [{ day: "2026-10-03", weightKg: 92.6, waistCm: null, chestCm: null, bicepCm: null }], deltas: null, hasCircumference: false } },
   run: { ok: true, data: { weekStart: "2026-09-28", coachWeek: null, runDays: [], appleWorkouts: [] } },
   volume: { ok: true, data: { weeks: [] } },
+  xp: { ok: true, data: { total: 0, week: 0, weekStart: "2026-09-28", level: levelFor(0), today: [], todayXp: 0, prsThisWeek: [] } },
+  slots: { ok: true, data: { weekStart: "2026-09-28", slots: fillSlots("2026-09-28", []), filled: 0, weeksCounted: 0, weeksComplete: 0 } },
+  boss: { ok: false, error: "connection refused" },
+  today: { ok: true, data: { today: "2026-10-04", weekday: 6, planWeek: 0, slot: null, routine: null, done: [], events: [], todayXp: 0, hero: { kind: "pause" } } },
 };
 
 const data = empty ? none : full;
 const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../app/globals.css"), "utf8");
-const body = renderToStaticMarkup(<Dashboard data={data} refreshAction={async () => {}} logoutAction={async () => {}} status={empty ? null : "ok"} />);
+let body = renderToStaticMarkup(<Dashboard data={data} refreshAction={async () => {}} logoutAction={async () => {}} status={empty ? null : "ok"} statsOpen={statsOpen} />);
+// --stats: also unfold every block inside STATS so the screenshot shows them.
+if (statsOpen) body = body.replaceAll('<details class="block block--fold', '<details open="" class="block block--fold');
 const html = `<!doctype html>
 <html lang="de">
 <head>
@@ -161,4 +255,4 @@ const html = `<!doctype html>
 `;
 mkdirSync(dirname(out), { recursive: true });
 writeFileSync(out, html);
-console.log(`${empty ? "empty" : "full"} preview → ${out} (${html.length} bytes)`);
+console.log(`${empty ? "empty" : afterPush ? "after-push" : rest ? "rest" : "full"}${statsOpen ? "+stats" : ""} preview → ${out} (${html.length} bytes)`);

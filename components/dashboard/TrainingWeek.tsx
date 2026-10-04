@@ -3,9 +3,9 @@ import { WEEKDAYS_DE, addDays, fmtDay } from "@/lib/dashboard/time";
 import { Block, fromLoader, type Loaded } from "./Block";
 
 // Mo–So tiles plus sets per muscle group against the plan target.
-export function TrainingWeek({ data, today }: { data: Loaded<TrainingWeekData>; today: string }) {
+export function TrainingWeek({ data, today, fold }: { data: Loaded<TrainingWeekData>; today: string; fold?: boolean }) {
   return (
-    <Block title="Trainingswoche" wide right={fromLoader(data, (t) => `${fmtDay(t.weekStart)}–${fmtDay(addDays(t.weekStart, 6))}`)}>
+    <Block fold={fold} title="Trainingswoche" wide right={fromLoader(data, (t) => `${fmtDay(t.weekStart)}–${fmtDay(addDays(t.weekStart, 6))}`)}>
       {fromLoader(data, (t) => (
         <>
           <div className="week" role="list" aria-label="Einheiten der Woche">

@@ -4,9 +4,9 @@ import { Block, Empty, fromLoader, type Loaded } from "./Block";
 
 const WORD: Record<RecoveryData["ampel"], string> = { gruen: "Grün", gelb: "Gelb", stopp: "Stopp", unbekannt: "Unbekannt" };
 
-export function RecoveryLight({ data }: { data: Loaded<RecoveryData> }) {
+export function RecoveryLight({ data, fold }: { data: Loaded<RecoveryData>; fold?: boolean }) {
   return (
-    <Block title="Erholung">
+    <Block fold={fold} title="Erholung">
       {fromLoader(data, (r) => {
         const noData = r.rhr.mean7 === null && r.hrv.mean7 === null && r.sleep.hours === null;
         return (

@@ -19,9 +19,9 @@ function path(points: { x: number; y: number | null }[]): string {
   return d.trim();
 }
 
-export function WeightTrend({ data }: { data: Loaded<WeightTrendData> }) {
+export function WeightTrend({ data, fold }: { data: Loaded<WeightTrendData>; fold?: boolean }) {
   return (
-    <Block title="Gewicht 8 Wochen" wide right={fromLoader(data, (w) => (w.latestAvg7 !== null ? `7d ${num(w.latestAvg7)} kg` : null))}>
+    <Block fold={fold} title="Gewicht 8 Wochen" wide right={fromLoader(data, (w) => (w.latestAvg7 !== null ? `7d ${num(w.latestAvg7)} kg` : null))}>
       {fromLoader(data, (w) => {
         const days = diffDays(w.from, w.to) + 1;
         if (!w.points.length) return <Empty>Keine Gewichtswerte in den letzten 8 Wochen. In HEVY oder Apple Health wiegen.</Empty>;

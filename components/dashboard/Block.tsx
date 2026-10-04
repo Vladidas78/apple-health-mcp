@@ -1,15 +1,29 @@
 import type { ReactNode } from "react";
 
-// One panel of the 1px grid. Server component, no state.
-export function Block({ title, right, wide, className, children }: {
+// One panel of the 1px grid. Server component, no state. With `fold` the
+// panel is a closed <details> whose summary is the title line (STATS section).
+export function Block({ title, right, wide, fold, className, children }: {
   title: string;
   right?: ReactNode;
   wide?: boolean;
+  fold?: boolean;
   className?: string;
   children: ReactNode;
 }) {
+  const cls = ["block", wide ? "block--wide" : "", fold ? "block--fold" : "", className ?? ""].join(" ").trim();
+  if (fold) {
+    return (
+      <details className={cls}>
+        <summary className="block__h">
+          <span>{title}</span>
+          {right ? <span>{right}</span> : null}
+        </summary>
+        <div className="block__body">{children}</div>
+      </details>
+    );
+  }
   return (
-    <section className={["block", wide ? "block--wide" : "", className ?? ""].join(" ").trim()}>
+    <section className={cls}>
       <h2 className="block__h">
         <span>{title}</span>
         {right ? <span>{right}</span> : null}

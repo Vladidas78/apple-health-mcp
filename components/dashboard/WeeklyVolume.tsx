@@ -6,9 +6,9 @@ import { Block, Empty, fromLoader, type Loaded } from "./Block";
 // labelled; every column has a hover title.
 const W = 320, H = 90, PB = 16, PT = 14;
 
-export function WeeklyVolume({ data }: { data: Loaded<WeeklyVolumeData> }) {
+export function WeeklyVolume({ data, fold }: { data: Loaded<WeeklyVolumeData>; fold?: boolean }) {
   return (
-    <Block title="Sätze je Woche">
+    <Block fold={fold} title="Sätze je Woche">
       {fromLoader(data, (v) => {
         const max = v.weeks.length ? Math.max(...v.weeks.map((w) => w.sets)) : 0;
         if (!max) return <Empty>Keine HEVY-Sätze in den letzten 12 Wochen.</Empty>;
