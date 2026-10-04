@@ -1,10 +1,12 @@
 import { PGlite } from "@electric-sql/pglite";
 import { drizzle } from "drizzle-orm/pglite";
 import { migrate } from "drizzle-orm/pglite/migrator";
+import { sql } from "drizzle-orm";
 import * as schema from "@/db/schema";
 
-// Spin up an isolated in-memory Postgres, apply the committed Drizzle migrations,
-// and return a typed db. Each test gets its own instance → no cross-test leakage.
+// Spin up an isolated in-memory Postgres, apply ALL committed Drizzle migrations
+// (0000 health tables, 0001 hevy + coach tables), and return a typed db. Each test
+// gets its own instance → no cross-test leakage.
 export async function makeTestDb() {
   const client = new PGlite();
   const db = drizzle(client, { schema });
@@ -13,3 +15,19 @@ export async function makeTestDb() {
 }
 
 export type TestDb = Awaited<ReturnType<typeof makeTestDb>>;
+
+// Names of all user tables in the public schema (sorted), for schema assertions.
+export async function tableNames(db: TestDb): Promise<string[]> {
+  const r = await db.execute(sql`
+    SELECT table_name FROM information_schema.tables
+    WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+      AND table_name <> '__drizzle_migrations'
+    ORDER BY table_name`);
+  return (r.rows as { table_name: string }[]).map((x) => x.table_name);
+}
+
+// Row count of a table by its SQL name.
+export async function countRows(db: TestDb, table: string): Promise<number> {
+  const r = await db.execute(sql.raw(`SELECT count(*)::int AS n FROM "${table}"`));
+  return (r.rows as { n: number }[])[0].n;
+}
