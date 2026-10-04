@@ -13,7 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "vercel-build": "drizzle-kit migrate && next build"
+    "vercel-build": "drizzle-kit migrate && next build",
+    "preview:dashboard": "tsx scripts/preview-dashboard.tsx"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",

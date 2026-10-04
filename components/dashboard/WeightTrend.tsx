@@ -6,7 +6,7 @@ import { Block, Empty, fromLoader, type Loaded } from "./Block";
 
 // 8 weeks: 7-day mean (ink line), daily values (muted dots), goal line (gold,
 // dashed). Inline SVG, no library. Hover = native <title>.
-const W = 680, H = 200, PL = 34, PR = 44, PT = 12, PB = 22;
+const W = 480, H = 190, PL = 30, PR = 40, PT = 12, PB = 22;
 
 function path(points: { x: number; y: number | null }[]): string {
   let d = "";
@@ -31,7 +31,7 @@ export function WeightTrend({ data }: { data: Loaded<WeightTrendData> }) {
         const hi = Math.ceil(Math.max(...values) + 0.5);
         const x = (day: string) => PL + ((W - PL - PR) * diffDays(w.from, day)) / (days - 1);
         const y = (kg: number) => PT + ((H - PT - PB) * (hi - kg)) / (hi - lo);
-        const step = hi - lo > 6 ? 2 : 1;
+        const step = hi - lo > 8 ? 3 : hi - lo > 4 ? 2 : 1;
         const ticks: number[] = [];
         for (let v = lo; v <= hi; v += step) ticks.push(v);
         const xTicks: string[] = [];

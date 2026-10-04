@@ -4,7 +4,7 @@ import { num } from "./format";
 import { Block, Empty, fromLoader, type Loaded } from "./Block";
 
 // Per lift: 12-week sparkline of the main number, latest value, boss target.
-const SW = 96, SH = 28;
+const SW = 120, SH = 28;
 
 function Sparkline({ lift }: { lift: LeadLiftData }) {
   const vals = lift.weeks.map((w) => w.best?.value ?? null);

@@ -10,7 +10,7 @@ export function WeeklyVolume({ data }: { data: Loaded<WeeklyVolumeData> }) {
   return (
     <Block title="Sätze je Woche">
       {fromLoader(data, (v) => {
-        const max = Math.max(...v.weeks.map((w) => w.sets));
+        const max = v.weeks.length ? Math.max(...v.weeks.map((w) => w.sets)) : 0;
         if (!max) return <Empty>Keine HEVY-Sätze in den letzten 12 Wochen.</Empty>;
         const n = v.weeks.length;
         const slot = W / n;

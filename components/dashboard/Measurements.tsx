@@ -5,7 +5,7 @@ import { Block, Empty, fromLoader, type Loaded } from "./Block";
 
 export function Measurements({ data }: { data: Loaded<MeasurementsData> }) {
   return (
-    <Block title="Umfänge">
+    <Block title="Umfänge" wide>
       {fromLoader(data, (m) => {
         if (!m.rows.length || !m.hasCircumference) {
           return (
