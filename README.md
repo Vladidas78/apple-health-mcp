@@ -79,6 +79,19 @@ One secret per trust boundary, so a leak in one place does not open the others:
 - `COACH_ENABLED=true` is required to register the coach write tools; without the
   flag the MCP endpoint exposes only the read tools.
 
+## HEVY sync (optional)
+
+`GET /api/hevy/sync` mirrors your HEVY workouts, sets, exercise templates and body
+measurements into Postgres (`hevy_*` tables), read-only, so the coach never has to
+transcribe sets by hand. It is stateless and idempotent: an empty table triggers a
+backfill from 2026-01-01, later runs read `/workouts/events` since
+`max(updated_at) - 1 day` and apply updates and deletions.
+
+- Env: `HEVY_API_KEY` (HEVY app → Settings → Developer) and `CRON_SECRET`.
+- `vercel.json` schedules it daily at 03:00 UTC; Vercel sends `Authorization: Bearer <CRON_SECRET>`.
+- Manual run: `curl -H "Authorization: Bearer <MCP_SECRET>" https://<your-app>.vercel.app/api/hevy/sync`
+- The server never writes to HEVY.
+
 ## Security notes
 
 - Treat every secret like a password. Rotate `MCP_SECRET` together with the 90-day
