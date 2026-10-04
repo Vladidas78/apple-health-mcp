@@ -142,7 +142,8 @@ describe("todayState + heroMode", () => {
     expect(pre).toMatchObject({ planWeek: 0, slot: null, routine: null, hero: { kind: "pause" } });
     const post = await todayState(db, new Date("2027-01-04T10:00:00Z"));
     expect(post).toMatchObject({ planWeek: 14, slot: null });
-    expect(heroMode(sun, "gelb")).toEqual({ kind: "pause" });
-    expect(heroMode(sun, "stopp")).toEqual({ kind: "stopp" });
+    expect(heroMode(fri, "gelb")).toEqual({ kind: "pause" });
+    expect(heroMode(sun, "gelb")).toEqual({ kind: "slot", label: "LAUF" });
+    expect(heroMode(fri, "stopp")).toEqual({ kind: "stopp" });
   });
 });
