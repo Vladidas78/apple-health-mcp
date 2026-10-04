@@ -11,8 +11,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Tägliches Trainings-Dashboard",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
-    theme_color: "#111111",
+    background_color: "#0A0A0A",
+    theme_color: "#0A0A0A",
     lang: "de",
   };
 }

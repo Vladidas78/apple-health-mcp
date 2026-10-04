@@ -13,14 +13,13 @@ export default async function LoginPage({
   const { error } = await searchParams;
   const configured = !!process.env.COACH_WEB_SECRET;
   return (
-    <main style={{ fontFamily: "system-ui", maxWidth: 420, margin: "10vh auto", padding: "0 1rem", color: "#111" }}>
-      <h1 style={{ fontSize: "1.25rem" }}>Coach – Anmeldung</h1>
+    <main className="wrap" style={{ maxWidth: 420, paddingTop: "12vh" }}>
+      <h1 className="head" style={{ fontSize: 30, margin: "0 0 4px" }}>Coach</h1>
+      <p className="mono small mute" style={{ margin: "0 0 20px" }}>Anmeldung</p>
       {!configured && (
-        <p style={{ color: "#c00", fontSize: ".9rem" }}>
-          COACH_WEB_SECRET ist nicht gesetzt. Ohne diese Umgebungsvariable ist kein Login möglich.
-        </p>
+        <p className="mono small mute">COACH_WEB_SECRET ist nicht gesetzt. Ohne diese Umgebungsvariable ist kein Login möglich.</p>
       )}
-      {error && <p style={{ color: "#c00", fontSize: ".9rem" }}>Falsches Passwort.</p>}
+      {error && <p className="mono small" style={{ color: "var(--iron)" }}>Falsches Passwort.</p>}
       <form action={login}>
         <input
           type="password"
@@ -29,13 +28,10 @@ export default async function LoginPage({
           autoFocus
           required
           autoComplete="current-password"
-          style={{ width: "100%", padding: ".6rem", fontSize: "1rem", border: "1px solid #ccc", borderRadius: 8, boxSizing: "border-box" }}
+          className="mono"
+          style={{ width: "100%", padding: ".7rem", fontSize: "1rem", background: "var(--panel)", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 2 }}
         />
-        <button
-          type="submit"
-          disabled={!configured}
-          style={{ marginTop: ".75rem", width: "100%", padding: ".6rem", fontSize: "1rem", border: 0, borderRadius: 8, background: "#111", color: "#fff", cursor: "pointer" }}
-        >
+        <button type="submit" disabled={!configured} className="btn btn--gold" style={{ marginTop: ".75rem", width: "100%", padding: ".7rem" }}>
           Anmelden
         </button>
       </form>
