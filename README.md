@@ -36,7 +36,7 @@ Local MCP servers can't reach claude.ai web/mobile, so this one is remote.
    - `DATABASE_URL` — your Neon string
    - `MCP_SECRET`, `INGEST_SECRET`, `COACH_WEB_SECRET` — `openssl rand -hex 32` each
    - `HEVY_API_KEY`, `CRON_SECRET` — for the daily HEVY sync (optional)
-3. **Migrate** — `DATABASE_URL=... npm run db:migrate`.
+3. **Migrate** — runs automatically on every Vercel build (`vercel-build` script). Locally: `DATABASE_URL=... npm run db:migrate`.
 4. **iOS push** — in Health Auto Export: **Automations → REST API**
    - URL: `https://<your-app>.vercel.app/api/ingest`
    - Header: `Authorization: Bearer <INGEST_SECRET>`

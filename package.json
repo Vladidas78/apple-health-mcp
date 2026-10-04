@@ -12,7 +12,8 @@
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
-    "db:push": "drizzle-kit push"
+    "db:push": "drizzle-kit push",
+    "vercel-build": "drizzle-kit migrate && next build"
   },
   "dependencies": {
     "@neondatabase/serverless": "1.1.0",
