@@ -194,3 +194,38 @@ export const coachWeeks = pgTable("coach_weeks", {
   note: text("note"),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ---------------------------------------------------------------------------
+// XP ledger (written by lib/coach/xp.ts, read by the dashboard). Append-only:
+// the sync runs many times, workouts get edited or deleted, history gets
+// re-imported, and the level must never fall back. (source, source_id, kind) is
+// the natural key, every award is INSERT … ON CONFLICT DO NOTHING.
+// ---------------------------------------------------------------------------
+
+export const coachXpEvents = pgTable(
+  "coach_xp_events",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    kind: text("kind").notNull(), // session | run | sets_target | pr | stop_day | week_complete
+    source: text("source").notNull(), // hevy_workout | health_workout | week | lift | day
+    sourceId: text("source_id").notNull(), // workout id, weekStart, weekStart:muscleKey, liftKey:workoutId, day
+    xp: integer("xp").notNull(),
+    weekStart: date("week_start").notNull(), // Monday, Europe/Berlin
+    awardedAt: timestamp("awarded_at", { withTimezone: true }).notNull().defaultNow(),
+    meta: jsonb("meta"),
+  },
+  (t) => [
+    uniqueIndex("coach_xp_events_uq").on(t.source, t.sourceId, t.kind),
+    index("coach_xp_events_week_idx").on(t.weekStart),
+  ],
+);
+
+// Boss baselines: 0 % of each boss bar. Set once (best value of the first 14
+// plan days, else the last value before the plan start) and never overwritten,
+// otherwise the percentage would drift.
+export const coachLiftBaselines = pgTable("coach_lift_baselines", {
+  liftKey: text("lift_key").primaryKey(), // bench | pullup_bw | dip | squat | waist | weight
+  value: numeric("value").notNull(),
+  day: date("day").notNull(),
+  mode: text("mode").notNull(), // e1rm | reps | added | cm | kg
+});

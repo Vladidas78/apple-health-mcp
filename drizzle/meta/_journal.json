@@ -15,6 +15,13 @@
       "when": 1791118696905,
       "tag": "0001_hevy_coach_tables",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791136950398,
+      "tag": "0002_xp_ledger",
+      "breakpoints": true
     }
   ]
 }

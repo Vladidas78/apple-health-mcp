@@ -14,13 +14,14 @@ describe("schema", () => {
     for (const t of [
       schema.hevyWorkouts, schema.hevySets, schema.hevyExerciseTemplates, schema.hevyMeasurements,
       schema.coachGoals, schema.coachPlans, schema.coachAssessments, schema.coachWeeks,
+      schema.coachXpEvents, schema.coachLiftBaselines,
     ]) expect(t).toBeDefined();
   });
 
-  it("migrations create all eleven tables in PGlite", async () => {
+  it("migrations create all thirteen tables in PGlite", async () => {
     const db = await makeTestDb();
     expect(await tableNames(db)).toEqual([
-      "coach_assessments", "coach_goals", "coach_plans", "coach_weeks",
+      "coach_assessments", "coach_goals", "coach_lift_baselines", "coach_plans", "coach_weeks", "coach_xp_events",
       "health_events", "hevy_exercise_templates", "hevy_measurements", "hevy_sets", "hevy_workouts",
       "metric_samples", "workouts",
     ]);
@@ -56,5 +57,18 @@ describe("schema", () => {
     await db.insert(schema.hevyMeasurements).values({ date: "2026-10-01", weightKg: "92.6", raw: {} })
       .onConflictDoUpdate({ target: schema.hevyMeasurements.date, set: { weightKg: "92.4" } });
     expect(await countRows(db, "hevy_measurements")).toBe(1);
+  });
+
+  it("coach_xp_events is append-only per (source, source_id, kind); baselines are keyed by lift", async () => {
+    const db = await makeTestDb();
+    const ev = { kind: "session", source: "hevy_workout", sourceId: "w1", xp: 100, weekStart: "2026-10-05" };
+    for (let i = 0; i < 3; i++) await db.insert(schema.coachXpEvents).values(ev).onConflictDoNothing();
+    await db.insert(schema.coachXpEvents).values({ ...ev, kind: "pr", source: "lift", sourceId: "bench:w1", xp: 80 }).onConflictDoNothing();
+    expect(await countRows(db, "coach_xp_events")).toBe(2);
+    await db.insert(schema.coachLiftBaselines).values({ liftKey: "bench", value: "96", day: "2026-10-06", mode: "e1rm" });
+    await db.insert(schema.coachLiftBaselines).values({ liftKey: "bench", value: "80", day: "2026-10-07", mode: "e1rm" }).onConflictDoNothing();
+    const b = await db.select().from(schema.coachLiftBaselines);
+    expect(b).toHaveLength(1);
+    expect(b[0].value).toBe("96");
   });
 });
