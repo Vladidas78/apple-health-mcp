@@ -29,7 +29,7 @@ export type DashboardData = {
 
 // Pure view: no data access, no Next imports, so it renders in the preview
 // script exactly as on the page. Four sections (Gina v2): HEUTE, DIESE WOCHE,
-// BOSS, STATS. Reward and action on top, everything explanatory folded below.
+// MISSION, STATS. Reward and action on top, everything explanatory folded below.
 export function Dashboard({ data, refreshAction, logoutAction, status, statsOpen }: {
   data: DashboardData;
   refreshAction?: (formData: FormData) => Promise<void>;

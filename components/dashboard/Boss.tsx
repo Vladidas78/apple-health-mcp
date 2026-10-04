@@ -5,7 +5,7 @@ import { fmtDay } from "@/lib/dashboard/time";
 import { num } from "./format";
 import { fromLoader, type Loaded } from "./Block";
 
-// BOSS: six progress bars baseline → boss target, then this week's PR feed.
+// MISSION: six progress bars baseline → target, then this week's PR feed.
 // Halftone texture lives only here.
 
 function fmtVal(mode: unknown, v: { weightKg?: number; reps?: number } | undefined): string {
@@ -33,9 +33,9 @@ export function nearestPr(lifts: LeadLiftData[]): string | null {
 
 export function Boss({ boss, xp, lifts }: { boss: Loaded<BossProgressData>; xp: Loaded<XpLedger>; lifts: Loaded<LeadLiftData[]> }) {
   return (
-    <section className="block block--wide boss" aria-label="Boss">
-      <h2 className="block__h"><span>Boss</span><span>{fmtDay("2026-12-21")}–{fmtDay(PLAN.end)}</span></h2>
-      <h3 className="head boss__title">BOSS · <em>{PLAN.bossWeekLabel}</em></h3>
+    <section className="block block--wide boss" aria-label="Mission">
+      <h2 className="block__h"><span>Mission</span><span>{fmtDay("2026-12-21")}–{fmtDay(PLAN.end)}</span></h2>
+      <h3 className="head boss__title">MISSION · <em>{PLAN.bossWeekLabel}</em></h3>
 
       {fromLoader(boss, (b) => (
         <>

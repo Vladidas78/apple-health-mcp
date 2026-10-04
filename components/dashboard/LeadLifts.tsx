@@ -3,7 +3,7 @@ import { fmtDay } from "@/lib/dashboard/time";
 import { num } from "./format";
 import { Block, Empty, fromLoader, type Loaded } from "./Block";
 
-// Per lift: 12-week sparkline of the main number, latest value, boss target.
+// Per lift: 12-week sparkline of the main number, latest value, mission target.
 const SW = 120, SH = 28;
 
 function Sparkline({ lift }: { lift: LeadLiftData }) {
@@ -58,7 +58,7 @@ export function LeadLifts({ data, fold }: { data: Loaded<LeadLiftData[]>; fold?:
                 <div className="lift__v">
                   <b>{l.latest ? num(l.latest.value, l.mode === "reps" ? 0 : 1) : "–"}</b> {l.latest ? l.unit : ""}
                   <span className="soll">
-                    {l.boss ? `Boss ${num(l.boss.value, l.mode === "reps" ? 0 : 0)} ${l.unit}` : l.mode === "e1rm" ? "e1RM" : l.mode === "reps" ? "max. Wdh" : "Zusatz kg"}
+                    {l.boss ? `Ziel ${num(l.boss.value, l.mode === "reps" ? 0 : 0)} ${l.unit}` : l.mode === "e1rm" ? "e1RM" : l.mode === "reps" ? "max. Wdh" : "Zusatz kg"}
                   </span>
                 </div>
               </div>

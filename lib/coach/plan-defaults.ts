@@ -90,8 +90,8 @@ export type LeadLift = {
 };
 
 export const LEAD_LIFTS: LeadLift[] = [
-  { key: "bench", title: "Langhantel-Bankdrücken", short: "Bank", templateIds: ["79D0BB3A"], mode: "e1rm", boss: { weightKg: 90, reps: 3 }, endBoss: "100 kg × 1 (März 2027)" },
-  { key: "pullup_bw", title: "Klimmzug ohne Zusatz", short: "Klimmzüge", templateIds: ["1B2B1E7C"], mode: "reps", boss: { weightKg: 0, reps: 16 }, endBoss: "20 am Stück (März 2027)" },
+  { key: "bench", title: "Langhantel-Bankdrücken", short: "Bank", templateIds: ["79D0BB3A"], mode: "e1rm", boss: { weightKg: 90, reps: 3 }, endBoss: "100 kg × 1 (Endmission März 2027)" },
+  { key: "pullup_bw", title: "Klimmzug ohne Zusatz", short: "Klimmzüge", templateIds: ["1B2B1E7C"], mode: "reps", boss: { weightKg: 0, reps: 16 }, endBoss: "20 am Stück (Endmission März 2027)" },
   { key: "pullup", title: "Klimmzug gewichtet", short: "Klimmzug +kg", templateIds: ["729237D1"], mode: "added", boss: null, endBoss: null },
   { key: "dip", title: "Brust Dip gewichtet", short: "Dips", templateIds: ["29472BE1"], mode: "added", boss: { weightKg: 17.5, reps: 8 }, endBoss: null },
   { key: "squat", title: "Squat (Smith Machine)", short: "Squat", templateIds: ["DDCC3821"], mode: "e1rm", boss: { weightKg: 90, reps: 6 }, endBoss: null },
