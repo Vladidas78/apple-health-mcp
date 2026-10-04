@@ -8,12 +8,13 @@ import {
   WEIGHT_GOAL,
   type MuscleKey,
 } from "@/lib/coach/plan-defaults";
-import { fillSlots, isComplete, type SlotSession } from "@/lib/coach/slots";
+import { bestOf, betterThan, type LeadSetRow } from "@/lib/coach/lifts";
+import { baselineWindowEnd, liftBaselineFrom, readBaselines, type Baseline, type BaselineKey } from "@/lib/coach/baselines";
+import { fillSlots, isComplete, slotSessionsOf } from "@/lib/coach/slots";
 import { addDays, berlinDay, berlinMidnight, weekStartOf, weekdayIndex } from "@/lib/dashboard/time";
-import {
-  bestOf, betterThan, hevySessions, leadSets, recovery, runSessions, weightTrend,
-  type Db, type HevySession, type LeadSetRow, type RunSession,
-} from "@/lib/dashboard/queries";
+import { hevySessions, leadSets, recovery, runSessions, weightTrend, type Db } from "@/lib/dashboard/queries";
+
+export { readBaselines, liftBaselineFrom, BASELINE_WINDOW_DAYS, type Baseline, type BaselineKey } from "@/lib/coach/baselines";
 
 // XP ledger (Gina, 25-gina-dashboard-v2 §1 and §5). Fixed XP per event, no
 // multipliers, no decay. Every award is idempotent through
@@ -78,17 +79,6 @@ const weekOf = (day: string) => addDays(day, -weekdayIndex(day));
 const endOfDay = (day: string) => new Date(berlinMidnight(addDays(day, 1)).getTime() - 1000);
 
 const zero = (): Record<XpKind, number> => ({ session: 0, run: 0, sets_target: 0, pr: 0, stop_day: 0, week_complete: 0 });
-
-// Sessions that count for a slot: strength with enough working sets, or a run.
-export function slotSessionsOf(sessions: HevySession[], runs: RunSession[]): SlotSession[] {
-  const out: SlotSession[] = [];
-  for (const s of sessions) {
-    if (s.sets < SESSION_MIN_SETS) continue;
-    out.push({ id: s.id, title: s.title, day: s.day, kind: "hevy", routineKey: s.routineKey, sets: s.sets, minutes: s.minutes });
-  }
-  for (const r of runs) out.push({ id: r.id, title: r.name, day: r.day, kind: "run", routineKey: null, sets: 0, minutes: r.minutes });
-  return out;
-}
 
 // Award every XP event the data supports, up to `now`. Returns the number of
 // NEW rows per kind (repeat calls return zeros). Sessions only from the plan
@@ -254,29 +244,6 @@ export async function xpLedger(db: Db, now = new Date()): Promise<XpLedger> {
 // Baselines: 0 % of each boss bar, set once
 // ---------------------------------------------------------------------------
 
-export type BaselineKey = "bench" | "pullup_bw" | "dip" | "squat" | "waist" | "weight";
-export type Baseline = { key: BaselineKey; value: number; day: string; mode: string };
-export const BASELINE_WINDOW_DAYS = 14;
-
-export async function readBaselines(db: Db): Promise<Map<BaselineKey, Baseline>> {
-  const rs = await rows<{ lift_key: BaselineKey; value: unknown; day: unknown; mode: string }>(db, sql`SELECT lift_key, value::float8 AS value, day::text AS day, mode FROM coach_lift_baselines`);
-  return new Map(rs.map((r) => [r.lift_key, { key: r.lift_key, value: n(r.value) ?? 0, day: String(r.day).slice(0, 10), mode: r.mode }]));
-}
-
-// Lift baseline from rows up to the end of the window: best of the first 14 plan
-// days, else the best set of the last session before the plan start. Null while
-// the window is still open and nothing can be final yet is the caller's call.
-export function liftBaselineFrom(lift: (typeof LEAD_LIFTS)[number], lead: LeadSetRow[]): { value: number; day: string } | null {
-  const windowEnd = addDays(PLAN.start, BASELINE_WINDOW_DAYS);
-  const inWindow = bestOf(lift, lead.filter((r) => r.day >= PLAN.start && r.day < windowEnd));
-  if (inWindow) return { value: inWindow.value, day: inWindow.day };
-  const before = lead.filter((r) => r.day < PLAN.start && lift.templateIds.includes(r.templateId));
-  if (!before.length) return null;
-  const lastId = before[before.length - 1].workoutId;
-  const last = bestOf(lift, before.filter((r) => r.workoutId === lastId));
-  return last ? { value: last.value, day: last.day } : null;
-}
-
 // Persist the baselines that can be final now; never overwrite. Lifts wait for
 // the 14-day window to close, waist takes the first measurement of the window
 // (else the last before the start, once the window closed), weight is the
@@ -285,7 +252,7 @@ export async function setBaselines(db: Db, now = new Date()): Promise<BaselineKe
   const today = berlinDay(now);
   if (today < PLAN.start) return [];
   const have = await readBaselines(db);
-  const windowEnd = addDays(PLAN.start, BASELINE_WINDOW_DAYS);
+  const windowEnd = baselineWindowEnd();
   const closed = today >= windowEnd;
   const out: Baseline[] = [];
 

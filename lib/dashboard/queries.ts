@@ -1,19 +1,27 @@
 import { sql } from "drizzle-orm";
 import {
-  BODYWEIGHT_KG,
   HEVY_MUSCLE_MAP,
+  HEVY_ROUTINES,
   LEAD_LIFTS,
   MUSCLE_GROUPS,
+  PLAN,
   RUN_MIN_MINUTES,
+  WEEK_SLOTS,
   WEIGHT_GOAL,
-  epley,
+  hevyRoutineLink,
+  planWeek,
   routineKeyOf,
-  type LeadLift,
   type LiftMode,
   type MuscleKey,
   type RoutineKey,
+  type SlotKey,
 } from "@/lib/coach/plan-defaults";
-import { addDays, berlinDay, berlinMidnight, diffDays, weekStartOf } from "@/lib/dashboard/time";
+import { betterThan, bestOf, valueOf, type BestSet, type LeadSetRow } from "@/lib/coach/lifts";
+import { baselineWindowEnd, liftBaselineFrom, readBaselines, type BaselineKey } from "@/lib/coach/baselines";
+import { fillSlots, isComplete, isCounted, slotSessionsOf, type Slot, type SlotSession } from "@/lib/coach/slots";
+import { addDays, berlinDay, berlinMidnight, diffDays, weekStartOf, weekdayIndex } from "@/lib/dashboard/time";
+
+export { betterThan, bestOf, valueOf, type BestSet, type LeadSetRow };
 
 // Pure loaders for the dashboard. Each takes the db as a parameter (neon-http in
 // prod, PGlite in tests) and a `now`, so every time boundary is deterministic.
@@ -299,8 +307,6 @@ export async function trainingWeek(db: Db, weekStart: string): Promise<TrainingW
 // 4. Lead lifts
 // ---------------------------------------------------------------------------
 
-// `value` is the main number of the lift's mode: e1RM (kg), reps, or added kg.
-export type BestSet = { day: string; weightKg: number; reps: number; systemLoad: number; e1rm: number; value: number };
 export type LeadLiftData = {
   key: string;
   title: string;
@@ -312,14 +318,6 @@ export type LeadLiftData = {
   weeks: { weekStart: string; best: BestSet | null }[];
   latest: BestSet | null;
 };
-
-export function valueOf(lift: LeadLift, weightKg: number, reps: number): { systemLoad: number; e1rm: number; value: number } {
-  const calisthenics = lift.mode !== "e1rm";
-  const systemLoad = calisthenics ? weightKg + BODYWEIGHT_KG : weightKg;
-  const e1rm = round1(epley(systemLoad, reps));
-  const value = lift.mode === "e1rm" ? e1rm : lift.mode === "reps" ? reps : weightKg;
-  return { systemLoad, e1rm, value };
-}
 
 export async function leadLifts(db: Db, weeks = 12, now = new Date()): Promise<LeadLiftData[]> {
   const thisWeek = weekStartOf(now);
@@ -549,7 +547,6 @@ export async function runSessions(db: Db, fromDay: string, toInstant: Date): Pro
 
 // Every working set at a lead lift, oldest first (all history when `from` is
 // omitted). Used for PR checks and baselines.
-export type LeadSetRow = { workoutId: string; templateId: string; day: string; start: Date; weightKg: number; reps: number; exerciseIndex: number; setIndex: number };
 
 export async function leadSets(db: Db, from?: Date, to?: Date): Promise<LeadSetRow[]> {
   const ids = LEAD_LIFTS.flatMap((l) => l.templateIds);
@@ -569,26 +566,170 @@ export async function leadSets(db: Db, from?: Date, to?: Date): Promise<LeadSetR
   }));
 }
 
-// Best set of a lift over the given rows, mode-aware like leadLifts(): e1RM →
-// best Epley, reps → last set of the exercise per workout, added → most added
-// weight (ties broken by e1RM). Rows must be ordered as leadSets() returns them.
-export function bestOf(lift: LeadLift, all: LeadSetRow[]): BestSet | null {
-  const own = new Set(lift.templateIds);
-  let mine = all.filter((r) => own.has(r.templateId) && r.reps > 0);
-  if (lift.mode === "reps") {
-    const last = new Map<string, LeadSetRow>();
-    for (const r of mine) last.set(r.workoutId, r);
-    mine = [...last.values()];
+// ---------------------------------------------------------------------------
+// 8. Week slots (Mo PUSH, Di LEGS, Mi PULL, Do LAUF, Fr CALI, Sa LAUF)
+// ---------------------------------------------------------------------------
+
+export const SLOT_LABEL: Record<SlotKey, string> = { PUSH: "PUSH", LEGS: "LEGS", PULL: "PULL", LAUF: "LAUF", CALI: "CALI" };
+
+export type WeekSlotsData = {
+  weekStart: string;
+  slots: Slot[];
+  filled: number; // 0..6
+  weeksCounted: number; // weeks since the plan start with >= 1 filled slot (up to this week)
+  weeksComplete: number; // weeks with 6/6
+};
+
+// Slots of the given week plus the two counters over every plan week up to it.
+// Sessions fill slots on whatever day they happened; a strength session counts
+// from SESSION_MIN_SETS working sets, a run from RUN_MIN_MINUTES.
+export async function weekSlots(db: Db, weekStart: string): Promise<WeekSlotsData> {
+  const firstWeek = weekStartOf(berlinMidnight(PLAN.start));
+  const fromDay = weekStart < firstWeek ? weekStart : firstWeek;
+  const to = berlinMidnight(addDays(weekStart, 7));
+  const [sessions, runs] = await Promise.all([hevySessions(db, fromDay, to), runSessions(db, fromDay, to)]);
+  const all = slotSessionsOf(sessions, runs);
+  const inWeek = (wk: string) => all.filter((s) => s.day >= wk && s.day < addDays(wk, 7));
+  const slots = fillSlots(weekStart, inWeek(weekStart));
+  let weeksCounted = 0, weeksComplete = 0;
+  for (let wk = firstWeek; wk <= weekStart; wk = addDays(wk, 7)) {
+    const ss = fillSlots(wk, inWeek(wk));
+    if (isCounted(ss)) weeksCounted++;
+    if (isComplete(ss)) weeksComplete++;
   }
-  let best: BestSet | null = null;
-  for (const r of mine) {
-    const b: BestSet = { day: r.day, weightKg: r.weightKg, reps: r.reps, ...valueOf(lift, r.weightKg, r.reps) };
-    if (!best || b.value > best.value || (b.value === best.value && b.e1rm > best.e1rm)) best = b;
-  }
-  return best;
+  return { weekStart, slots, filled: slots.filter((s) => s.filled).length, weeksCounted, weeksComplete };
 }
 
-export const betterThan = (a: BestSet, b: BestSet | null): boolean => !b || a.value > b.value || (a.value === b.value && a.e1rm > b.e1rm);
+// ---------------------------------------------------------------------------
+// 9. Boss progress (baseline → boss target, 0–100 %)
+// ---------------------------------------------------------------------------
+
+export type BossRow = {
+  key: BaselineKey;
+  label: string;
+  unit: "kg" | "Wdh" | "cm";
+  baseline: number | null;
+  baselineDay: string | null;
+  provisional: boolean; // baseline not persisted yet (window still open)
+  current: number | null;
+  currentDay: string | null;
+  target: number | null;
+  pct: number | null; // clamped 0–100, null without baseline or current value
+  decreasing: boolean; // waist, weight
+};
+export type BossProgressData = { rows: BossRow[]; windowEnd: string };
+
+function pctOf(baseline: number | null, current: number | null, target: number | null): number | null {
+  if (baseline === null || current === null || target === null) return null;
+  const span = target - baseline;
+  if (span === 0) return (target > 0 ? current >= target : current <= target) ? 100 : 0;
+  return Math.max(0, Math.min(100, Math.round(((current - baseline) / span) * 100)));
+}
+
+export async function bossProgress(db: Db, now = new Date()): Promise<BossProgressData> {
+  const windowEnd = baselineWindowEnd();
+  const [have, lifts, weight, waistRows] = await Promise.all([
+    readBaselines(db),
+    leadLifts(db, 12, now),
+    weightTrend(db, 1, now),
+    rows<{ day: unknown; cm: unknown }>(
+      db,
+      sql`SELECT date::text AS day, waist_cm::float8 AS cm FROM hevy_measurements WHERE waist_cm IS NOT NULL ORDER BY date DESC`,
+    ),
+  ]);
+  const bossLifts = LEAD_LIFTS.filter((l) => l.boss);
+  const missing = bossLifts.filter((l) => !have.has(l.key as BaselineKey));
+  const lead = missing.length ? await leadSets(db, undefined, berlinMidnight(windowEnd)) : [];
+
+  const out: BossRow[] = [];
+  for (const lift of bossLifts) {
+    const key = lift.key as BaselineKey;
+    const data = lifts.find((l) => l.key === lift.key)!;
+    const b = have.get(key);
+    const prov = b ? null : liftBaselineFrom(lift, lead);
+    const baseline = b?.value ?? prov?.value ?? null;
+    out.push({
+      key, label: lift.short, unit: lift.mode === "reps" ? "Wdh" : "kg",
+      baseline, baselineDay: b?.day ?? prov?.day ?? null, provisional: !b,
+      current: data.latest?.value ?? null, currentDay: data.latest?.day ?? null,
+      target: data.boss?.value ?? null, pct: pctOf(baseline, data.latest?.value ?? null, data.boss?.value ?? null), decreasing: false,
+    });
+  }
+  // Waist: baseline persisted, else first in the window, else last before the start.
+  const waist = waistRows.map((r) => ({ day: dayOf(r.day), cm: n(r.cm) })).filter((r): r is { day: string; cm: number } => r.cm !== null);
+  const wb = have.get("waist");
+  const wProv = wb ? null : ([...waist].reverse().find((r) => r.day >= PLAN.start && r.day < windowEnd) ?? waist.find((r) => r.day < PLAN.start) ?? null);
+  const waistBase = wb?.value ?? wProv?.cm ?? null;
+  const waistCur = waist[0] ?? null;
+  out.push({
+    key: "waist", label: "Taille", unit: "cm", baseline: waistBase, baselineDay: wb?.day ?? wProv?.day ?? null, provisional: !wb,
+    current: waistCur?.cm ?? null, currentDay: waistCur?.day ?? null, target: waistBase === null ? null : round1(waistBase - 4),
+    pct: pctOf(waistBase, waistCur?.cm ?? null, waistBase === null ? null : waistBase - 4), decreasing: true,
+  });
+  const gb = have.get("weight");
+  const weightBase = gb?.value ?? WEIGHT_GOAL.startKg;
+  out.push({
+    key: "weight", label: "Gewicht", unit: "kg", baseline: weightBase, baselineDay: gb?.day ?? PLAN.start, provisional: !gb,
+    current: weight.latestAvg7, currentDay: weight.latest?.day ?? null, target: WEIGHT_GOAL.bossMaxKg,
+    pct: pctOf(weightBase, weight.latestAvg7, WEIGHT_GOAL.bossMaxKg), decreasing: true,
+  });
+  return { rows: out, windowEnd };
+}
+
+// ---------------------------------------------------------------------------
+// 10. Today: slot, routine deep link, today's XP, hero mode
+// ---------------------------------------------------------------------------
+
+export type XpEventRow = { id: number; kind: string; source: string; sourceId: string; xp: number; weekStart: string; awardedAt: Date; meta: Record<string, unknown> | null };
+export type HeroMode = { kind: "xp"; xp: number } | { kind: "slot"; label: string } | { kind: "pause" } | { kind: "stopp" };
+export type TodayState = {
+  today: string;
+  weekday: number; // 0 = Monday
+  planWeek: number; // 0 before, 1..12 inside, 13+ after
+  slot: { key: SlotKey; label: string } | null; // null on Sunday and outside the plan
+  routine: { key: RoutineKey; id: string; title: string; href: string } | null;
+  done: SlotSession[]; // sessions of today that count
+  events: XpEventRow[]; // awarded today (Berlin)
+  todayXp: number;
+  hero: HeroMode; // without the traffic light; the view re-applies heroMode() with it
+};
+
+// Reward first, brake second, then the plan: +N XP once something was awarded
+// today, STOPP on a red light, PAUSE on a rest day, else the slot name.
+export function heroMode(s: Pick<TodayState, "todayXp" | "slot">, ampel: Ampel): HeroMode {
+  if (s.todayXp > 0) return { kind: "xp", xp: s.todayXp };
+  if (ampel === "stopp") return { kind: "stopp" };
+  if (!s.slot) return { kind: "pause" };
+  return { kind: "slot", label: s.slot.label };
+}
+
+export async function todayState(db: Db, now = new Date()): Promise<TodayState> {
+  const today = berlinDay(now);
+  const weekday = weekdayIndex(today);
+  const pw = planWeek(today);
+  const inPlan = pw >= 1 && pw <= PLAN.weeks;
+  const slotDef = inPlan ? WEEK_SLOTS.find((s) => s.weekday === weekday) ?? null : null;
+  const slot = slotDef ? { key: slotDef.key, label: SLOT_LABEL[slotDef.key] } : null;
+  const routine = slotDef && slotDef.key !== "LAUF"
+    ? { key: slotDef.key, id: HEVY_ROUTINES[slotDef.key].id, title: HEVY_ROUTINES[slotDef.key].title, href: hevyRoutineLink(HEVY_ROUTINES[slotDef.key].id) }
+    : null;
+  const [sessions, runs, evs] = await Promise.all([
+    hevySessions(db, today, berlinMidnight(addDays(today, 1))),
+    runSessions(db, today, berlinMidnight(addDays(today, 1))),
+    rows<{ id: unknown; kind: string; source: string; source_id: string; xp: unknown; week_start: unknown; awarded_at: unknown; meta: unknown }>(
+      db,
+      sql`SELECT id, kind, source, source_id, xp, week_start::text AS week_start, awarded_at, meta FROM coach_xp_events
+          WHERE awarded_at >= ${berlinMidnight(today)} AND awarded_at < ${berlinMidnight(addDays(today, 1))} ORDER BY id`,
+    ),
+  ]);
+  const events: XpEventRow[] = evs.map((r) => ({
+    id: Number(r.id), kind: r.kind, source: r.source, sourceId: r.source_id, xp: n(r.xp) ?? 0, weekStart: String(r.week_start).slice(0, 10),
+    awardedAt: new Date(r.awarded_at as string), meta: (typeof r.meta === "string" ? JSON.parse(r.meta) : r.meta) as Record<string, unknown> | null,
+  }));
+  const todayXp = events.reduce((a, e) => a + e.xp, 0);
+  const state = { today, weekday, planWeek: pw, slot, routine, done: slotSessionsOf(sessions, runs), events, todayXp };
+  return { ...state, hero: heroMode(state, "unbekannt") };
+}
 
 // ---------------------------------------------------------------------------
 // Header: last HEVY sync
