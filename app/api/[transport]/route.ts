@@ -56,7 +56,7 @@ const handler = createMcpHandler((server) => {
   maxDuration: 60,
 });
 
-// Gate the MCP endpoint. Accept the static secret (Claude Code / ?key) OR a valid
+// Gate the MCP endpoint. Accept the static secret (Claude Code) OR a valid
 // OAuth access token (claude.ai web/mobile). On rejection, return a 401 with a
 // WWW-Authenticate challenge pointing at our protected-resource metadata, which is
 // what makes claude.ai start the OAuth flow.

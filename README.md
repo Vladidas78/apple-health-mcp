@@ -32,13 +32,14 @@ Local MCP servers can't reach claude.ai web/mobile, so this one is remote.
 ## Self-host
 
 1. **Database** — provision Neon (Vercel Marketplace → Neon) and copy the connection string.
-2. **Deploy** — deploy this repo to Vercel. Set env vars:
+2. **Deploy** — deploy this repo to Vercel. Set env vars (see `.env.example`):
    - `DATABASE_URL` — your Neon string
-   - `MCP_SECRET` — `openssl rand -hex 32`
+   - `MCP_SECRET`, `INGEST_SECRET`, `COACH_WEB_SECRET` — `openssl rand -hex 32` each
+   - `HEVY_API_KEY`, `CRON_SECRET` — for the daily HEVY sync (optional)
 3. **Migrate** — `DATABASE_URL=... npm run db:migrate`.
 4. **iOS push** — in Health Auto Export: **Automations → REST API**
    - URL: `https://<your-app>.vercel.app/api/ingest`
-   - Header: `Authorization: Bearer <MCP_SECRET>`
+   - Header: `Authorization: Bearer <INGEST_SECRET>`
    - Format: JSON, all data types, schedule hourly.
 5. **Connect Claude** — same URL everywhere: `https://<your-app>.vercel.app/api/mcp`
    - **Web / mobile / desktop (claude.ai):** add a Custom Connector with that URL.
@@ -50,15 +51,38 @@ Local MCP servers can't reach claude.ai web/mobile, so this one is remote.
 
 ## Auth model
 
-- **Claude Code / ingest** use the static `MCP_SECRET` as a bearer (or `?key=`).
+One secret per trust boundary, so a leak in one place does not open the others:
+
+| Secret | Used by | Where it lives |
+|---|---|---|
+| `MCP_SECRET` | Claude Code bearer for `/api/mcp`; password on the OAuth `/authorize` page | Claude Code config, Routine env, your password manager |
+| `INGEST_SECRET` | Bearer that Health Auto Export sends to `/api/ingest` | the HAE app |
+| `COACH_WEB_SECRET` | Browser login at `/login`; HMAC key of the `coach_session` cookie | your password manager |
+| `HEVY_API_KEY` | Server-side HEVY sync (read-only) | Vercel env only |
+| `CRON_SECRET` | Bearer Vercel Cron sends to `/api/hevy/sync` | Vercel env only |
+
+- Secrets are accepted **only** as `Authorization: Bearer <secret>`. The former
+  `?key=` query parameter is gone: it put the secret into browser history, Vercel
+  logs and screenshots.
+- **Transition rule:** while `INGEST_SECRET` is unset, `/api/ingest` accepts
+  `MCP_SECRET`, so an existing Health Auto Export setup keeps working. As soon as
+  `INGEST_SECRET` is set, only it is accepted for ingest, and it is never accepted
+  on `/api/mcp`. Same rule for `CRON_SECRET` on the sync route (`MCP_SECRET` stays
+  valid there as a manual trigger).
 - **claude.ai web/mobile/desktop** require OAuth, so the server ships a minimal,
   stateless OAuth 2.1 layer (discovery, dynamic client registration, PKCE). The
   `/authorize` step is gated by `MCP_SECRET` (entered as a password), so only the
   secret-holder can mint a token. Codes and tokens are HMAC-signed — no DB, no deps.
+- **Browser** sessions are a separate HMAC token (`{t:"web"}`, key
+  `COACH_WEB_SECRET`) in an HttpOnly cookie. An MCP access token never counts as a
+  browser session and vice versa.
+- `COACH_ENABLED=true` is required to register the coach write tools; without the
+  flag the MCP endpoint exposes only the read tools.
 
 ## Security notes
 
-- Treat `MCP_SECRET` like a password: it's the ingest bearer *and* the OAuth login.
+- Treat every secret like a password. Rotate `MCP_SECRET` together with the 90-day
+  OAuth token TTL; rotating it re-prompts the claude.ai connector for the secret.
 - For extra `health_sql` safety, point `DATABASE_URL` at a Postgres role granted
   only `SELECT`, or keep a separate read-only role for production.
 - Custom Connectors require a paid Claude plan (Pro/Max/Team/Enterprise).

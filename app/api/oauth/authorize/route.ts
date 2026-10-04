@@ -1,5 +1,6 @@
 import { requireEnv } from "@/lib/env";
 import { issueCode } from "@/lib/oauth";
+import { secretEquals } from "@/lib/secret-compare";
 
 // Authorization endpoint. Because this is a single-user server, "logging in" =
 // proving you hold the secret. GET renders a password form (carrying the OAuth
@@ -44,7 +45,7 @@ export async function POST(req: Request) {
   const get = (k: string) => (form.get(k)?.toString() ?? "");
   const values = Object.fromEntries(PARAMS.map((p) => [p, get(p)]));
 
-  if (get("secret") !== requireEnv("MCP_SECRET")) {
+  if (!secretEquals(get("secret"), requireEnv("MCP_SECRET"))) {
     return page(values, "Incorrect secret. Try again.");
   }
 

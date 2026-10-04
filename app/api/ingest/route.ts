@@ -1,4 +1,4 @@
-import { secretOk } from "@/lib/auth";
+import { ingestOk } from "@/lib/auth";
 import { haePayloadSchema } from "@/lib/hae-schema";
 import { normalize } from "@/lib/ingest";
 import { persist } from "@/lib/persist";
@@ -15,7 +15,7 @@ type Db = Parameters<typeof persist>[0];
 // requests from opening a DB connection (and from 500ing when DATABASE_URL is
 // absent). Tests inject `() => pgliteDb`.
 export async function handleIngest(req: Request, getDbFn: () => Db): Promise<Response> {
-  if (!secretOk(req)) {
+  if (!ingestOk(req)) {
     return Response.json({ error: "unauthorized" }, { status: 401 });
   }
   let body: unknown;
