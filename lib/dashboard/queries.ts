@@ -4,11 +4,14 @@ import {
   HEVY_MUSCLE_MAP,
   LEAD_LIFTS,
   MUSCLE_GROUPS,
+  RUN_MIN_MINUTES,
   WEIGHT_GOAL,
   epley,
+  routineKeyOf,
   type LeadLift,
   type LiftMode,
   type MuscleKey,
+  type RoutineKey,
 } from "@/lib/coach/plan-defaults";
 import { addDays, berlinDay, berlinMidnight, diffDays, weekStartOf } from "@/lib/dashboard/time";
 
@@ -310,7 +313,7 @@ export type LeadLiftData = {
   latest: BestSet | null;
 };
 
-function valueOf(lift: LeadLift, weightKg: number, reps: number): { systemLoad: number; e1rm: number; value: number } {
+export function valueOf(lift: LeadLift, weightKg: number, reps: number): { systemLoad: number; e1rm: number; value: number } {
   const calisthenics = lift.mode !== "e1rm";
   const systemLoad = calisthenics ? weightKg + BODYWEIGHT_KG : weightKg;
   const e1rm = round1(epley(systemLoad, reps));
@@ -479,6 +482,113 @@ export async function weeklyVolume(db: Db, weeks = 12, now = new Date()): Promis
   }
   return { weeks: out };
 }
+
+// ---------------------------------------------------------------------------
+// Shared loaders for slots, XP and baselines
+// ---------------------------------------------------------------------------
+
+// Strength sessions in [fromDay 00:00 Berlin, toInstant): working-set count and
+// the routine key from the title (or raw.routine_id, should HEVY ever send it).
+export type HevySession = { id: string; title: string; day: string; start: Date; minutes: number | null; sets: number; routineKey: RoutineKey | null };
+
+export async function hevySessions(db: Db, fromDay: string, toInstant: Date): Promise<HevySession[]> {
+  const rs = await rows<{ id: string; title: string | null; day: string; start: unknown; minutes: unknown; sets: unknown; routine_id: string | null }>(
+    db,
+    sql`SELECT w.id, w.title, w.start_time AS start, to_char(w.start_time AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD') AS day,
+               (extract(epoch FROM (w.end_time - w.start_time)) / 60)::float8 AS minutes,
+               (SELECT count(*) FROM hevy_sets s WHERE s.workout_id = w.id AND coalesce(s.set_type, 'normal') <> 'warmup')::int AS sets,
+               w.raw->>'routine_id' AS routine_id
+        FROM hevy_workouts w WHERE w.start_time >= ${berlinMidnight(fromDay)} AND w.start_time < ${toInstant}
+        ORDER BY w.start_time`,
+  );
+  return rs.map((w) => ({
+    id: w.id, title: w.title ?? "Training", day: w.day, start: new Date(w.start as string),
+    minutes: n(w.minutes) === null ? null : Math.round(n(w.minutes)!),
+    sets: n(w.sets) ?? 0, routineKey: routineKeyOf(w.title, w.routine_id),
+  }));
+}
+
+// Runs in [fromDay, toInstant): Apple Health workouts of a running type with at
+// least RUN_MIN_MINUTES, plus days with running_speed samples spanning that long
+// when no workout was recorded (id "speed:<day>").
+export type RunSession = { id: string; name: string; day: string; start: Date; minutes: number; km: number | null };
+
+export async function runSessions(db: Db, fromDay: string, toInstant: Date): Promise<RunSession[]> {
+  const from = berlinMidnight(fromDay);
+  const ws = await rows<{ id: string; name: string | null; day: string; start: unknown; minutes: unknown; km: unknown }>(
+    db,
+    sql`SELECT id, name, start, to_char(start AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD') AS day,
+               (duration_s / 60)::float8 AS minutes,
+               CASE WHEN distance_units ILIKE 'km' THEN distance::float8
+                    WHEN distance_units ILIKE 'm' THEN distance::float8 / 1000
+                    WHEN distance_units ILIKE 'mi%' THEN distance::float8 * 1.609344
+                    ELSE distance::float8 END AS km
+        FROM workouts
+        WHERE start >= ${from} AND start < ${toInstant} AND duration_s >= ${RUN_MIN_MINUTES * 60}
+          AND (name ILIKE '%run%' OR name ILIKE '%lauf%' OR name ILIKE '%jog%' OR raw->>'type' ILIKE '%run%')
+        ORDER BY start`,
+  );
+  const runs: RunSession[] = ws.map((w) => ({
+    id: w.id, name: w.name ?? "Laufen", day: w.day, start: new Date(w.start as string),
+    minutes: Math.round(n(w.minutes) ?? 0), km: n(w.km) === null ? null : round1(n(w.km)!),
+  }));
+  const have = new Set(runs.map((r) => r.day));
+  const sp = await rows<{ day: string; first: unknown; minutes: unknown }>(
+    db,
+    sql`SELECT to_char(date AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD') AS day, min(date) AS first,
+               (extract(epoch FROM (max(date) - min(date))) / 60)::float8 AS minutes
+        FROM metric_samples WHERE metric_name = 'running_speed' AND date >= ${from} AND date < ${toInstant}
+        GROUP BY 1 HAVING extract(epoch FROM (max(date) - min(date))) >= ${RUN_MIN_MINUTES * 60} ORDER BY 1`,
+  );
+  for (const r of sp) {
+    if (have.has(r.day)) continue;
+    runs.push({ id: `speed:${r.day}`, name: "Laufen (Health-Samples)", day: r.day, start: new Date(r.first as string), minutes: Math.round(n(r.minutes) ?? 0), km: null });
+  }
+  return runs.sort((a, b) => a.start.getTime() - b.start.getTime());
+}
+
+// Every working set at a lead lift, oldest first (all history when `from` is
+// omitted). Used for PR checks and baselines.
+export type LeadSetRow = { workoutId: string; templateId: string; day: string; start: Date; weightKg: number; reps: number; exerciseIndex: number; setIndex: number };
+
+export async function leadSets(db: Db, from?: Date, to?: Date): Promise<LeadSetRow[]> {
+  const ids = LEAD_LIFTS.flatMap((l) => l.templateIds);
+  const rs = await rows<{ workout_id: string; template_id: string; day: string; start: unknown; weight: unknown; reps: unknown; exercise_index: number; set_index: number }>(
+    db,
+    sql`SELECT s.workout_id, s.template_id, s.exercise_index, s.set_index, w.start_time AS start,
+               to_char(w.start_time AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD') AS day,
+               s.weight_kg::float8 AS weight, s.reps
+        FROM hevy_sets s JOIN hevy_workouts w ON w.id = s.workout_id
+        WHERE s.template_id IN ${ids} AND coalesce(s.set_type, 'normal') <> 'warmup' AND s.reps > 0
+          AND w.start_time >= ${from ?? new Date(0)} AND w.start_time < ${to ?? new Date("2100-01-01T00:00:00Z")}
+        ORDER BY w.start_time, s.exercise_index, s.set_index`,
+  );
+  return rs.map((r) => ({
+    workoutId: r.workout_id, templateId: r.template_id, day: r.day, start: new Date(r.start as string),
+    weightKg: n(r.weight) ?? 0, reps: n(r.reps) ?? 0, exerciseIndex: Number(r.exercise_index), setIndex: Number(r.set_index),
+  }));
+}
+
+// Best set of a lift over the given rows, mode-aware like leadLifts(): e1RM →
+// best Epley, reps → last set of the exercise per workout, added → most added
+// weight (ties broken by e1RM). Rows must be ordered as leadSets() returns them.
+export function bestOf(lift: LeadLift, all: LeadSetRow[]): BestSet | null {
+  const own = new Set(lift.templateIds);
+  let mine = all.filter((r) => own.has(r.templateId) && r.reps > 0);
+  if (lift.mode === "reps") {
+    const last = new Map<string, LeadSetRow>();
+    for (const r of mine) last.set(r.workoutId, r);
+    mine = [...last.values()];
+  }
+  let best: BestSet | null = null;
+  for (const r of mine) {
+    const b: BestSet = { day: r.day, weightKg: r.weightKg, reps: r.reps, ...valueOf(lift, r.weightKg, r.reps) };
+    if (!best || b.value > best.value || (b.value === best.value && b.e1rm > best.e1rm)) best = b;
+  }
+  return best;
+}
+
+export const betterThan = (a: BestSet, b: BestSet | null): boolean => !b || a.value > b.value || (a.value === b.value && a.e1rm > b.e1rm);
 
 // ---------------------------------------------------------------------------
 // Header: last HEVY sync

@@ -109,6 +109,76 @@ export const BOSS_OTHER = [
   { label: "Gewicht", target: "≤ 88,5 kg" },
 ] as const;
 
+// Week of the plan for a day: 0 before the start, 1..12 inside, 13+ after.
+export function planWeek(day: string): number {
+  const [y, m, d] = day.split("-").map(Number);
+  const [sy, sm, sd] = PLAN.start.split("-").map(Number);
+  const diff = Math.round((Date.UTC(y, m - 1, d) - Date.UTC(sy, sm - 1, sd)) / 86_400_000);
+  if (diff < 0) return 0;
+  return Math.floor(diff / 7) + 1;
+}
+
+// ---------------------------------------------------------------------------
+// Week slots and HEVY routines
+// ---------------------------------------------------------------------------
+
+export type RoutineKey = "PUSH" | "LEGS" | "PULL" | "CALI";
+export type SlotKey = RoutineKey | "LAUF";
+
+// HEVY routine ids of the plan. [ANNAHME] titles of LEGS and PULL follow the PUSH
+// pattern; only PUSH and CALI titles were confirmed.
+export const HEVY_ROUTINES: Record<RoutineKey, { id: string; title: string }> = {
+  PUSH: { id: "b6c5be28-a608-4374-9a35-35a28d79ed19", title: "PUSH (Mo) · Kraft & Figur" },
+  LEGS: { id: "ff21bce4-2630-4a29-951d-0b080406445e", title: "LEGS (Di) · Kraft & Figur" },
+  PULL: { id: "61a8acd6-9385-4688-b066-09392d19332c", title: "PULL (Mi) · Kraft & Figur" },
+  CALI: { id: "082aba2c-f143-492c-8b6a-3adaafbbb20b", title: "CALISTHENICS-OK + Beine light (Fr) · Kraft & Figur" },
+};
+
+// [ANNAHME] HEVY deep link scheme. Rendered as a plain <a>, so a phone without
+// the app (or a different scheme) only gets a dead tap, never a broken page.
+export function hevyRoutineLink(id: string): string {
+  return `hevy://routine/${id}`;
+}
+
+// The six plan slots of a week, Mo PUSH, Di LEGS, Mi PULL, Do LAUF, Fr CALI, Sa LAUF.
+export const WEEK_SLOTS: { key: SlotKey; weekday: number }[] = [
+  { key: "PUSH", weekday: 0 },
+  { key: "LEGS", weekday: 1 },
+  { key: "PULL", weekday: 2 },
+  { key: "LAUF", weekday: 3 },
+  { key: "CALI", weekday: 4 },
+  { key: "LAUF", weekday: 5 },
+];
+
+// A strength session counts (XP, slot) from this many working sets; a run from
+// this many minutes.
+export const SESSION_MIN_SETS = 10;
+export const RUN_MIN_MINUTES = 20;
+
+const ROUTINE_ID_TO_KEY: Record<string, RoutineKey> = Object.fromEntries(
+  (Object.keys(HEVY_ROUTINES) as RoutineKey[]).map((k) => [HEVY_ROUTINES[k].id, k]),
+);
+
+// HEVY workout → routine key. routine_id (if HEVY ever sends it in `raw`) wins,
+// then the title prefix (workouts started from a routine carry its title), then
+// keywords for the older titles ("Push - A", "Lower A", "Upper (Calisthenics)").
+// [ANNAHME] "Upper" is mapped to PUSH; the old upper-body sessions have no slot of
+// their own.
+export function routineKeyOf(title: string | null | undefined, routineId?: string | null): RoutineKey | null {
+  if (routineId && ROUTINE_ID_TO_KEY[routineId]) return ROUTINE_ID_TO_KEY[routineId];
+  const t = (title ?? "").trim().toLowerCase();
+  if (!t) return null;
+  for (const k of ["push", "legs", "pull", "cali"] as const) {
+    if (t.startsWith(k)) return k === "cali" ? "CALI" : (k.toUpperCase() as RoutineKey);
+  }
+  if (t.includes("calisthenics")) return "CALI";
+  if (t.includes("push")) return "PUSH";
+  if (t.includes("lower") || t.includes("legs") || t.includes("beine")) return "LEGS";
+  if (t.includes("pull")) return "PULL";
+  if (t.includes("upper")) return "PUSH";
+  return null;
+}
+
 // Epley estimate of the one-rep max. Returns the load itself for a single rep.
 export function epley(load: number, reps: number): number {
   if (reps <= 1) return load;
