@@ -3,7 +3,8 @@ import { makeTestDb } from "./helpers/db";
 import { normalize } from "@/lib/ingest";
 import { persist } from "@/lib/persist";
 import { latestSnapshot } from "@/lib/tools/latest-snapshot";
-import { healthSql, assertReadOnly } from "@/lib/tools/health-sql";
+import { sql } from "drizzle-orm";
+import { healthSql, assertReadOnly, wrapReadOnly } from "@/lib/tools/health-sql";
 
 async function seeded() {
   const db = await makeTestDb();
@@ -40,8 +41,36 @@ describe("health_sql guard", () => {
   it("rejects multi-statement", () => {
     expect(() => assertReadOnly("SELECT 1; DROP TABLE workouts")).toThrow();
   });
+  it("rejects a data-modifying CTE hidden behind WITH", () => {
+    expect(() => assertReadOnly("WITH x AS (DELETE FROM metric_samples RETURNING 1) SELECT 1")).toThrow(/DELETE/);
+    expect(() => assertReadOnly("WITH x AS (UPDATE workouts SET name = 'y' RETURNING 1) SELECT 1")).toThrow(/UPDATE/);
+    expect(() => assertReadOnly("WITH x AS (INSERT INTO workouts (id, raw) VALUES ('z', '{}') RETURNING 1) SELECT 1")).toThrow(/INSERT/);
+    expect(() => assertReadOnly("SELECT 1 FROM metric_samples; TRUNCATE workouts")).toThrow();
+    for (const kw of ["truncate", "drop", "alter"]) {
+      expect(() => assertReadOnly(`SELECT 1 WHERE 'a' = '${kw} x'`)).toThrow();
+    }
+  });
+  it("keeps column names that merely contain a keyword", () => {
+    expect(() => assertReadOnly("SELECT updated_at, deleted FROM hevy_workouts")).not.toThrow();
+  });
   it("runs a select and returns rows", async () => {
     const rows = await healthSql(await seeded(), "SELECT count(*)::int AS n FROM metric_samples");
+    expect(rows[0].n).toBe(2);
+  });
+  it("runs ORDER BY / LIMIT / WITH queries inside the subquery wrapper", async () => {
+    const db = await seeded();
+    const rows = await healthSql(db, "SELECT qty FROM metric_samples ORDER BY date DESC LIMIT 1;");
+    expect(rows).toEqual([{ qty: "250" }]);
+    const cte = await healthSql(db, "WITH x AS (SELECT qty FROM metric_samples) SELECT count(*)::int AS n FROM x");
+    expect(cte[0].n).toBe(2);
+  });
+  it("Postgres itself rejects a data-modifying CTE inside the wrapper (second layer)", async () => {
+    const db = await seeded();
+    const wrapped = wrapReadOnly("WITH x AS (DELETE FROM metric_samples RETURNING 1) SELECT * FROM x");
+    // Drizzle wraps the driver error; the Postgres message lives in `cause`.
+    await expect(db.execute(sql.raw(wrapped))).rejects.toSatisfy((e: any) =>
+      /data-modifying statement must be at the top level/i.test(e?.cause?.message ?? e?.message ?? ""));
+    const rows = await healthSql(db, "SELECT count(*)::int AS n FROM metric_samples");
     expect(rows[0].n).toBe(2);
   });
 });

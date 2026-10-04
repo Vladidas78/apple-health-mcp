@@ -43,7 +43,7 @@ const handler = createMcpHandler((server) => {
     async () => ok(await latestSnapshot(getDb())));
 
   server.registerTool("health_sql",
-    { title: "Read-only SQL", description: "Run a single read-only SELECT/WITH query over tables: metric_samples, workouts, health_events.",
+    { title: "Read-only SQL", description: "Run a single read-only SELECT/WITH query (executed as a subquery; data-modifying keywords are rejected) over tables: metric_samples, workouts, health_events, hevy_workouts, hevy_sets, hevy_exercise_templates, hevy_measurements, coach_goals, coach_plans, coach_assessments, coach_weeks.",
       inputSchema: { query: z.string() } },
     async ({ query }) => {
       try { return ok(await healthSql(getDb(), query)); }
