@@ -567,7 +567,7 @@ export async function leadSets(db: Db, from?: Date, to?: Date): Promise<LeadSetR
 }
 
 // ---------------------------------------------------------------------------
-// 8. Week slots (Mo PUSH, Di LEGS, Mi PULL, Do LAUF, Fr CALI, Sa LAUF)
+// 8. Week slots (Mo PUSH, Di LEGS, Mi LAUF, Do PULL, Fr frei, Sa CALI, So LAUF)
 // ---------------------------------------------------------------------------
 
 export const SLOT_LABEL: Record<SlotKey, string> = { PUSH: "PUSH", LEGS: "LEGS", PULL: "PULL", LAUF: "LAUF", CALI: "CALI" };

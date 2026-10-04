@@ -4,7 +4,7 @@ import type { HevySession, RunSession } from "@/lib/dashboard/queries";
 
 // Pure slot filling: a session fills the first open slot of its kind, on
 // whatever day it happened (PULL on Thursday fills the PULL slot). A second
-// PUSH in the same week fills nothing; the two LAUF slots take the first two runs.
+// PUSH in the same week fills nothing; the two LAUF slots (Mi, So) take the first two runs.
 
 export type SlotSession = {
   id: string;

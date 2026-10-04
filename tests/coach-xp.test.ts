@@ -61,7 +61,7 @@ describe("routine mapping and slots", () => {
       ({ id, title: id, day, kind, routineKey, sets: 12, minutes: 50 });
     const slots = fillSlots(W1, [s("pull", "2026-10-08", "PULL"), s("push", "2026-10-06", "PUSH"), s("push2", "2026-10-10", "PUSH"), s("r1", "2026-10-07", null, "run"), s("r2", "2026-10-11", null, "run"), s("r3", "2026-10-11", null, "run")]);
     expect(slots.map((x) => [x.key, x.weekday, x.filled?.id ?? null])).toEqual([
-      ["PUSH", 0, "push"], ["LEGS", 1, null], ["PULL", 2, "pull"], ["LAUF", 3, "r1"], ["CALI", 4, null], ["LAUF", 5, "r2"],
+      ["PUSH", 0, "push"], ["LEGS", 1, null], ["LAUF", 2, "r1"], ["PULL", 3, "pull"], ["CALI", 5, null], ["LAUF", 6, "r2"],
     ]);
     expect(slots[0].day).toBe("2026-10-05");
   });

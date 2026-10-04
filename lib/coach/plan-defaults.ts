@@ -131,8 +131,8 @@ export type SlotKey = RoutineKey | "LAUF";
 export const HEVY_ROUTINES: Record<RoutineKey, { id: string; title: string }> = {
   PUSH: { id: "b6c5be28-a608-4374-9a35-35a28d79ed19", title: "PUSH (Mo) · Kraft & Figur" },
   LEGS: { id: "ff21bce4-2630-4a29-951d-0b080406445e", title: "LEGS (Di) · Kraft & Figur" },
-  PULL: { id: "61a8acd6-9385-4688-b066-09392d19332c", title: "PULL (Mi) · Kraft & Figur" },
-  CALI: { id: "082aba2c-f143-492c-8b6a-3adaafbbb20b", title: "CALISTHENICS-OK + Beine light (Fr) · Kraft & Figur" },
+  PULL: { id: "61a8acd6-9385-4688-b066-09392d19332c", title: "PULL (Do) · Kraft & Figur" },
+  CALI: { id: "082aba2c-f143-492c-8b6a-3adaafbbb20b", title: "CALISTHENICS-OK + Beine light (Sa) · Kraft & Figur" },
 };
 
 // [ANNAHME] HEVY deep link scheme. Rendered as a plain <a>, so a phone without
@@ -141,14 +141,15 @@ export function hevyRoutineLink(id: string): string {
   return `hevy://routine/${id}`;
 }
 
-// The six plan slots of a week, Mo PUSH, Di LEGS, Mi PULL, Do LAUF, Fr CALI, Sa LAUF.
+// The six plan slots of a week: Mo PUSH, Di LEGS, Mi LAUF (locker, mit Kollege),
+// Do PULL, Fr frei, Sa CALI, So LAUF (Intervall). Friday is the weekday rest day.
 export const WEEK_SLOTS: { key: SlotKey; weekday: number }[] = [
   { key: "PUSH", weekday: 0 },
   { key: "LEGS", weekday: 1 },
-  { key: "PULL", weekday: 2 },
-  { key: "LAUF", weekday: 3 },
-  { key: "CALI", weekday: 4 },
-  { key: "LAUF", weekday: 5 },
+  { key: "LAUF", weekday: 2 },
+  { key: "PULL", weekday: 3 },
+  { key: "CALI", weekday: 5 },
+  { key: "LAUF", weekday: 6 },
 ];
 
 // A strength session counts (XP, slot) from this many working sets; a run from

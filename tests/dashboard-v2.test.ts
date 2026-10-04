@@ -29,15 +29,15 @@ describe("weekSlots", () => {
     await appleRun(db, "r4", "2026-10-17T07:00:00Z", 50);
 
     const w1 = await weekSlots(db, W1);
-    expect(w1.slots.map((s) => [s.key, s.filled?.id ?? null])).toEqual([["PUSH", "push1"], ["LEGS", null], ["PULL", "pull1"], ["LAUF", "r1"], ["CALI", null], ["LAUF", "r2"]]);
+    expect(w1.slots.map((s) => [s.key, s.filled?.id ?? null])).toEqual([["PUSH", "push1"], ["LEGS", null], ["LAUF", "r1"], ["PULL", "pull1"], ["CALI", null], ["LAUF", "r2"]]);
     expect(w1.filled).toBe(4);
     expect(w1.weeksCounted).toBe(1);
     expect(w1.weeksComplete).toBe(0);
-    expect(w1.slots[2].filled).toMatchObject({ day: "2026-10-08", kind: "hevy", sets: 12, minutes: 55 });
+    expect(w1.slots[3].filled).toMatchObject({ day: "2026-10-08", kind: "hevy", sets: 12, minutes: 55 });
 
     const w2 = await weekSlots(db, W2);
     expect(w2.filled).toBe(6);
-    expect(w2.slots.map((s) => s.filled?.id)).toEqual(["push2", "legs2", "pull2", "r3", "cali2", "r4"]);
+    expect(w2.slots.map((s) => s.filled?.id)).toEqual(["push2", "legs2", "r3", "pull2", "cali2", "r4"]);
     expect(w2.weeksCounted).toBe(2);
     expect(w2.weeksComplete).toBe(1);
 
@@ -128,14 +128,16 @@ describe("todayState + heroMode", () => {
     expect(tue).toMatchObject({ todayXp: 0, slot: { key: "LEGS" }, hero: { kind: "slot", label: "LEGS" } });
     expect(tue.routine?.id).toBe(HEVY_ROUTINES.LEGS.id);
   });
-  it("run day has no routine, Sunday and days outside the plan are PAUSE", async () => {
+  it("run day has no routine, Friday and days outside the plan are PAUSE", async () => {
     const db = await makeTestDb();
-    const thu = await todayState(db, new Date("2026-10-15T10:00:00Z"));
-    expect(thu.slot).toEqual({ key: "LAUF", label: "LAUF" });
-    expect(thu.routine).toBeNull();
+    const wed = await todayState(db, new Date("2026-10-14T10:00:00Z"));
+    expect(wed.slot).toEqual({ key: "LAUF", label: "LAUF" });
+    expect(wed.routine).toBeNull();
     const sun = await todayState(db, new Date("2026-10-18T10:00:00Z"));
-    expect(sun.slot).toBeNull();
-    expect(sun.hero).toEqual({ kind: "pause" });
+    expect(sun.slot).toEqual({ key: "LAUF", label: "LAUF" });
+    const fri = await todayState(db, new Date("2026-10-16T10:00:00Z"));
+    expect(fri.slot).toBeNull();
+    expect(fri.hero).toEqual({ kind: "pause" });
     const pre = await todayState(db, new Date("2026-10-04T10:00:00Z"));
     expect(pre).toMatchObject({ planWeek: 0, slot: null, routine: null, hero: { kind: "pause" } });
     const post = await todayState(db, new Date("2027-01-04T10:00:00Z"));

@@ -9,10 +9,10 @@ import type { Loaded } from "./Block";
 // the coach writes assessments, a fixed rule produces it: plan week × weekday
 // × traffic light. Two sentences, one chip (Gina v2), every sentence a number.
 
-const WEEK1 = ["PUSH 50 %, 12 Sätze, RPE ≤ 7", "PULL 50 %, 2 Sätze je Übung, RPE ≤ 7", "LEGS 50 %, Squat 2 × 8 mit 60 kg, ohne Hip Thrust", "frei", "CALI 50 % ohne Zusatzgewicht, RPE ≤ 7", "30 min locker, Z1/Z2", "frei"];
-const STANDARD = ["PUSH, 20 Sätze, RIR 2", "LEGS, 21 Sätze, RIR 2", "PULL, 22 Sätze, RIR 2", "Intervall 5–6 × 3 min im 5k-Tempo", "CALI + Beine light, 21 Sätze", "Z2-Lauf 40–50 min", "frei, Check-in unter 5 min"];
-const WEEK2 = ["PUSH 75 %, 15 Sätze, RPE 8", "LEGS 75 %, 16 Sätze, RPE 8", "PULL 75 %, 16 Sätze, RPE 8", "Intervall-Einstieg 4 × 3 min im 10k-Tempo", "CALI 75 %, 15 Sätze", "Z2-Lauf 40 min", "frei"];
-const DELOAD = ["PUSH Deload, 2 Sätze je Übung, RIR 3–4", "LEGS Deload, 2 Sätze je Übung", "PULL Deload, 2 Sätze je Übung", "kurz 4 × 2 min", "CALI Deload, 2 Sätze je Übung", "Z2-Lauf 40 min", "frei"];
+const WEEK1 = ["PUSH 50 %, 12 Sätze, RPE ≤ 7", "PULL 50 %, 2 Sätze je Übung, Klimmzug ohne Zusatz, RPE ≤ 7", "30 min locker mit Kollege, Z1/Z2", "LEGS 50 %, Squat 2 × 8 mit 60 kg, ohne Hip Thrust", "frei", "CALI 50 % ohne Zusatzgewicht, RPE ≤ 7", "frei"];
+const STANDARD = ["PUSH, 20 Sätze, RIR 2, 60 min", "LEGS, 21 Sätze, RIR 2, 60 min", "Lauf mit Kollege, locker Z2, 40–50 min", "PULL, 22 Sätze, RIR 2, 60 min", "frei", "CALI + Beine light, 20 Sätze, Max-Test Klimmzüge", "Intervall 5–6 × 3 min im 5k-Tempo"];
+const WEEK2 = ["PUSH 75 %, 15 Sätze, RPE 8, Baseline Bank", "LEGS 75 %, 16 Sätze, RPE 8", "Lauf mit Kollege, locker Z2, 40 min", "PULL 75 %, 16 Sätze, RPE 8", "frei", "CALI 75 %, erster Max-Test Klimmzüge", "Intervall-Einstieg 4 × 3 min im 10k-Tempo"];
+const DELOAD = ["PUSH Deload, 2 Sätze je Übung, RIR 3–4", "LEGS Deload, 2 Sätze je Übung", "Lauf mit Kollege, locker Z2, 40 min", "PULL Deload, 2 Sätze je Übung", "frei", "CALI Deload, 2 Sätze je Übung", "kurz 4 × 2 min"];
 
 export function coachText(today: string, recovery: RecoveryData | null, training: TrainingWeekData | null): { lines: string[]; chips: string[] } {
   const w = planWeek(today);
