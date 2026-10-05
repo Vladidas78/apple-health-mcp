@@ -102,9 +102,9 @@ function slotsFixture(): WeekSlotsData {
   const sessions = afterPush
     ? [ses("a", HEVY_ROUTINES.PUSH.title, WEEK, "PUSH", "hevy", 18)]
     : rest
-      ? [ses("a", HEVY_ROUTINES.PUSH.title, WEEK, "PUSH"), ses("b", HEVY_ROUTINES.LEGS.title, addDays(WEEK, 1), "LEGS"), ses("c", HEVY_ROUTINES.PULL.title, addDays(WEEK, 3), "PULL"),
-         ses("r1", "Laufen", addDays(WEEK, 2), null, "run", 0, 32), ses("d", HEVY_ROUTINES.CALI.title, addDays(WEEK, 4), "CALI"), ses("r2", "Laufen", addDays(WEEK, 5), null, "run", 0, 48)]
-      : [ses("a", "Push - A", WEEK, "PUSH"), ses("b", "Lower A", addDays(WEEK, 1), "LEGS")];
+      ? [ses("a", HEVY_ROUTINES.PUSH.title, WEEK, "PUSH"), ses("b", HEVY_ROUTINES.PULL.title, addDays(WEEK, 1), "PULL"), ses("c", HEVY_ROUTINES.LEGS.title, addDays(WEEK, 4), "LEGS"),
+         ses("r1", "Laufen", addDays(WEEK, 2), null, "run", 0, 32), ses("d", HEVY_ROUTINES.CALI.title, addDays(WEEK, 5), "CALI"), ses("r2", "Laufen", addDays(WEEK, 6), null, "run", 0, 48)]
+      : [ses("a", "Push - A", WEEK, "PUSH"), ses("b", "Pull - A", addDays(WEEK, 1), "PULL")];
   const slots = fillSlots(WEEK, sessions);
   return { weekStart: WEEK, slots, filled: slots.filter((x) => x.filled).length, weeksCounted: 2, weeksComplete: rest ? 1 : 0 };
 }
@@ -170,15 +170,15 @@ const full: DashboardData = {
         ? [{ id: "a", title: HEVY_ROUTINES.PUSH.title, day: WEEK, weekday: 0, minutes: 61, sets: 18 }]
         : [
             { id: "a", title: "Push - A", day: WEEK, weekday: 0, minutes: 52, sets: 15 },
-            { id: "b", title: "Lower A", day: addDays(WEEK, 1), weekday: 1, minutes: 58, sets: 16 },
-            ...(rest ? [{ id: "c", title: "Pull - A", day: addDays(WEEK, 3), weekday: 3, minutes: 49, sets: 16 }, { id: "d", title: HEVY_ROUTINES.CALI.title, day: addDays(WEEK, 4), weekday: 4, minutes: 50, sets: 21 }] : []),
+            { id: "b", title: "Pull - A", day: addDays(WEEK, 1), weekday: 1, minutes: 58, sets: 16 },
+            ...(rest ? [{ id: "c", title: HEVY_ROUTINES.LEGS.title, day: addDays(WEEK, 4), weekday: 4, minutes: 49, sets: 16 }, { id: "d", title: HEVY_ROUTINES.CALI.title, day: addDays(WEEK, 5), weekday: 5, minutes: 50, sets: 21 }] : []),
           ];
       const days = Array.from({ length: 7 }, (_, i) => sessions.filter((s) => s.weekday === i));
       const have: Record<string, number> = afterPush
         ? { brust: 9, schultern: 5, trizeps: 4 }
         : rest
           ? { brust: 15, lat: 12, oberer_ruecken: 6, schultern: 10, bizeps: 5, trizeps: 6, quads: 10, hamstrings_glutes: 12, waden: 4, core: 6 }
-          : { brust: 8, lat: 7, oberer_ruecken: 4, schultern: 5, bizeps: 4, trizeps: 4, quads: 6, hamstrings_glutes: 6, waden: 2, core: 1 };
+          : { brust: 8, lat: 9, oberer_ruecken: 4, schultern: 5, bizeps: 4, trizeps: 4, core: 1 };
       return {
         weekStart: WEEK, days, sessions, totalSets: afterPush ? 18 : rest ? 86 : 31,
         muscles: MUSCLE_GROUPS.map((g) => ({ key: g.key, label: g.label, sets: have[g.key] ?? 0, target: g.target })),
@@ -203,8 +203,8 @@ const full: DashboardData = {
     data: {
       weekStart: WEEK, coachWeek: null, runDays: afterPush ? [] : rest ? [addDays(WEEK, 2), addDays(WEEK, 5)] : [addDays(WEEK, 1)],
       appleWorkouts: afterPush ? [] : rest
-        ? [{ id: "r1", name: "Laufen", day: addDays(WEEK, 2), minutes: 32, km: 6.1 }, { id: "r2", name: "Laufen", day: addDays(WEEK, 5), minutes: 48, km: 8.7 }]
-        : [{ id: "r1", name: "Laufen", day: addDays(WEEK, 1), minutes: 28, km: 5.4 }],
+        ? [{ id: "r1", name: "Laufen", day: addDays(WEEK, 2), minutes: 32, km: 6.1 }, { id: "r2", name: "Laufen", day: addDays(WEEK, 6), minutes: 48, km: 8.7 }]
+        : [],
     },
   },
   volume: {

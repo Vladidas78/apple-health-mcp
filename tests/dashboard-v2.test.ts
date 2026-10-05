@@ -20,7 +20,7 @@ describe("weekSlots", () => {
     await hevyWorkout(db, "legs-short", HEVY_ROUTINES.LEGS.title, "2026-10-06T16:00:00Z", 15, [filler("DDCC3821", 5, 70, 8)]);
     await appleRun(db, "r1", "2026-10-07T05:30:00Z", 30);
     await appleRun(db, "r2", "2026-10-11T07:00:00Z", 50);
-    // Week 2: everything, PULL and LEGS swapped.
+    // Week 2: everything, LEGS on Wednesday instead of Friday.
     await hevyWorkout(db, "push2", PUSH, "2026-10-12T16:00:00Z", 55, [filler("79D0BB3A", 12, 80, 6)]);
     await hevyWorkout(db, "pull2", HEVY_ROUTINES.PULL.title, "2026-10-13T16:00:00Z", 55, [filler("1B2B1E7C", 12, 0, 8)]);
     await hevyWorkout(db, "legs2", HEVY_ROUTINES.LEGS.title, "2026-10-14T16:00:00Z", 55, [filler("DDCC3821", 12, 70, 8)]);
@@ -29,15 +29,15 @@ describe("weekSlots", () => {
     await appleRun(db, "r4", "2026-10-17T07:00:00Z", 50);
 
     const w1 = await weekSlots(db, W1);
-    expect(w1.slots.map((s) => [s.key, s.filled?.id ?? null])).toEqual([["PUSH", "push1"], ["LEGS", null], ["LAUF", "r1"], ["PULL", "pull1"], ["CALI", null], ["LAUF", "r2"]]);
+    expect(w1.slots.map((s) => [s.key, s.filled?.id ?? null])).toEqual([["PUSH", "push1"], ["PULL", "pull1"], ["LAUF", "r1"], ["LEGS", null], ["CALI", null], ["LAUF", "r2"]]);
     expect(w1.filled).toBe(4);
     expect(w1.weeksCounted).toBe(1);
     expect(w1.weeksComplete).toBe(0);
-    expect(w1.slots[3].filled).toMatchObject({ day: "2026-10-08", kind: "hevy", sets: 12, minutes: 55 });
+    expect(w1.slots[1].filled).toMatchObject({ day: "2026-10-08", kind: "hevy", sets: 12, minutes: 55 });
 
     const w2 = await weekSlots(db, W2);
     expect(w2.filled).toBe(6);
-    expect(w2.slots.map((s) => s.filled?.id)).toEqual(["push2", "legs2", "r3", "pull2", "cali2", "r4"]);
+    expect(w2.slots.map((s) => s.filled?.id)).toEqual(["push2", "pull2", "r3", "legs2", "cali2", "r4"]);
     expect(w2.weeksCounted).toBe(2);
     expect(w2.weeksComplete).toBe(1);
 
@@ -125,25 +125,28 @@ describe("todayState + heroMode", () => {
     // Still there late in the evening, gone the next morning.
     expect((await todayState(db, new Date("2026-10-12T21:55:00Z"))).todayXp).toBe(180);
     const tue = await todayState(db, new Date("2026-10-13T06:00:00Z"));
-    expect(tue).toMatchObject({ todayXp: 0, slot: { key: "LEGS" }, hero: { kind: "slot", label: "LEGS" } });
-    expect(tue.routine?.id).toBe(HEVY_ROUTINES.LEGS.id);
+    expect(tue).toMatchObject({ todayXp: 0, slot: { key: "PULL" }, hero: { kind: "slot", label: "PULL" } });
+    expect(tue.routine?.id).toBe(HEVY_ROUTINES.PULL.id);
+    const fri = await todayState(db, new Date("2026-10-16T06:00:00Z"));
+    expect(fri).toMatchObject({ slot: { key: "LEGS" }, hero: { kind: "slot", label: "LEGS" } });
+    expect(fri.routine?.id).toBe(HEVY_ROUTINES.LEGS.id);
   });
-  it("run day has no routine, Friday and days outside the plan are PAUSE", async () => {
+  it("run day has no routine, Thursday and days outside the plan are PAUSE", async () => {
     const db = await makeTestDb();
     const wed = await todayState(db, new Date("2026-10-14T10:00:00Z"));
     expect(wed.slot).toEqual({ key: "LAUF", label: "LAUF" });
     expect(wed.routine).toBeNull();
     const sun = await todayState(db, new Date("2026-10-18T10:00:00Z"));
     expect(sun.slot).toEqual({ key: "LAUF", label: "LAUF" });
-    const fri = await todayState(db, new Date("2026-10-16T10:00:00Z"));
-    expect(fri.slot).toBeNull();
-    expect(fri.hero).toEqual({ kind: "pause" });
+    const thu = await todayState(db, new Date("2026-10-15T10:00:00Z"));
+    expect(thu.slot).toBeNull();
+    expect(thu.hero).toEqual({ kind: "pause" });
     const pre = await todayState(db, new Date("2026-10-04T10:00:00Z"));
     expect(pre).toMatchObject({ planWeek: 0, slot: null, routine: null, hero: { kind: "pause" } });
     const post = await todayState(db, new Date("2027-01-04T10:00:00Z"));
     expect(post).toMatchObject({ planWeek: 14, slot: null });
-    expect(heroMode(fri, "gelb")).toEqual({ kind: "pause" });
+    expect(heroMode(thu, "gelb")).toEqual({ kind: "pause" });
     expect(heroMode(sun, "gelb")).toEqual({ kind: "slot", label: "LAUF" });
-    expect(heroMode(fri, "stopp")).toEqual({ kind: "stopp" });
+    expect(heroMode(thu, "stopp")).toEqual({ kind: "stopp" });
   });
 });

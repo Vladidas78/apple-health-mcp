@@ -126,13 +126,14 @@ export function planWeek(day: string): number {
 export type RoutineKey = "PUSH" | "LEGS" | "PULL" | "CALI";
 export type SlotKey = RoutineKey | "LAUF";
 
-// HEVY routine ids of the plan. [ANNAHME] titles of LEGS and PULL follow the PUSH
-// pattern; only PUSH and CALI titles were confirmed.
+// HEVY routine ids of the plan. The Sunday progression routine rewrites the
+// title suffix ("n/12 Wochen") every week, so only the prefix is relied on
+// (routineKeyOf); the titles here are display labels.
 export const HEVY_ROUTINES: Record<RoutineKey, { id: string; title: string }> = {
   PUSH: { id: "b6c5be28-a608-4374-9a35-35a28d79ed19", title: "PUSH (Mo) · Kraft & Figur" },
-  LEGS: { id: "ff21bce4-2630-4a29-951d-0b080406445e", title: "LEGS (Di) · Kraft & Figur" },
-  PULL: { id: "61a8acd6-9385-4688-b066-09392d19332c", title: "PULL (Do) · Kraft & Figur" },
-  CALI: { id: "082aba2c-f143-492c-8b6a-3adaafbbb20b", title: "CALISTHENICS-OK + Beine light (Sa) · Kraft & Figur" },
+  PULL: { id: "61a8acd6-9385-4688-b066-09392d19332c", title: "PULL (Di) · Kraft & Figur" },
+  LEGS: { id: "ff21bce4-2630-4a29-951d-0b080406445e", title: "LEGS + Finisher (Fr) · Kraft & Figur" },
+  CALI: { id: "082aba2c-f143-492c-8b6a-3adaafbbb20b", title: "CALISTHENICS-OK (Sa) · Kraft & Figur" },
 };
 
 // [ANNAHME] HEVY deep link scheme. Rendered as a plain <a>, so a phone without
@@ -141,13 +142,14 @@ export function hevyRoutineLink(id: string): string {
   return `hevy://routine/${id}`;
 }
 
-// The six plan slots of a week: Mo PUSH, Di LEGS, Mi LAUF (locker, mit Kollege),
-// Do PULL, Fr frei, Sa CALI, So LAUF (Intervall). Friday is the weekday rest day.
+// The six plan slots of a week: Mo PUSH, Di PULL, Mi LAUF (locker, mit Kollege),
+// Do frei, Fr LEGS + Hyrox-Finisher, Sa CALI, So LAUF (locker, nur bei grüner
+// Ampel). Thursday is the weekday rest day; legs are trained once a week.
 export const WEEK_SLOTS: { key: SlotKey; weekday: number }[] = [
   { key: "PUSH", weekday: 0 },
-  { key: "LEGS", weekday: 1 },
+  { key: "PULL", weekday: 1 },
   { key: "LAUF", weekday: 2 },
-  { key: "PULL", weekday: 3 },
+  { key: "LEGS", weekday: 4 },
   { key: "CALI", weekday: 5 },
   { key: "LAUF", weekday: 6 },
 ];

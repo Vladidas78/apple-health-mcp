@@ -9,10 +9,11 @@ import type { Loaded } from "./Block";
 // the coach writes assessments, a fixed rule produces it: plan week × weekday
 // × traffic light. Two sentences, one chip (Gina v2), every sentence a number.
 
-const WEEK1 = ["PUSH 50 %, 12 Sätze, RPE ≤ 7", "PULL 50 %, 2 Sätze je Übung, Klimmzug ohne Zusatz, RPE ≤ 7", "30 min locker mit Kollege, Z1/Z2", "LEGS 50 %, Squat 2 × 8 mit 60 kg, ohne Hip Thrust", "frei", "CALI 50 % ohne Zusatzgewicht, RPE ≤ 7", "frei"];
-const STANDARD = ["PUSH, 20 Sätze, RIR 2, 60 min", "LEGS, 21 Sätze, RIR 2, 60 min", "Lauf mit Kollege, locker Z2, 40–50 min", "PULL, 22 Sätze, RIR 2, 60 min", "frei", "CALI + Beine light, 20 Sätze, Max-Test Klimmzüge", "Intervall 5–6 × 3 min im 5k-Tempo"];
-const WEEK2 = ["PUSH 75 %, 15 Sätze, RPE 8, Baseline Bank", "LEGS 75 %, 16 Sätze, RPE 8", "Lauf mit Kollege, locker Z2, 40 min", "PULL 75 %, 16 Sätze, RPE 8", "frei", "CALI 75 %, erster Max-Test Klimmzüge", "Intervall-Einstieg 4 × 3 min im 10k-Tempo"];
-const DELOAD = ["PUSH Deload, 2 Sätze je Übung, RIR 3–4", "LEGS Deload, 2 Sätze je Übung", "Lauf mit Kollege, locker Z2, 40 min", "PULL Deload, 2 Sätze je Übung", "frei", "CALI Deload, 2 Sätze je Übung", "kurz 4 × 2 min"];
+// Index = weekday (0 = Mo): PUSH, PULL, Lauf, frei, LEGS + Finisher, CALI, Lauf nach Ampel.
+const WEEK1 = ["PUSH 50 %, 12 Sätze, RPE ≤ 7", "PULL 50 %, 2 Sätze je Übung, Klimmzug ohne Zusatz, RPE ≤ 7", "30 min locker mit Kollege, Z1/Z2", "frei", "LEGS 50 %, Squat 2 × 8 mit 60 kg, ohne Finisher", "CALI 50 % ohne Zusatzgewicht, RPE ≤ 7", "frei"];
+const STANDARD = ["PUSH, 20 Sätze, RIR 2, 60 min", "PULL, 22 Sätze, RIR 2, 60 min", "Lauf mit Kollege, locker Z2, 40–50 min", "frei", "LEGS, 3–4 Sätze je Übung, 40 min, dann Finisher 6 × 1 min Rudern oder Ski", "CALI, 20 Sätze, Max-Test Klimmzüge", "Lauf locker 30–40 min, nur bei grüner Ampel"];
+const WEEK2 = ["PUSH 75 %, 15 Sätze, RPE 8, Baseline Bank", "PULL 75 %, 16 Sätze, RPE 8", "Lauf mit Kollege, locker Z2, 40 min", "frei", "LEGS 75 %, 16 Sätze, RPE 8, Finisher 4 × 1 min", "CALI 75 %, erster Max-Test Klimmzüge", "Lauf locker 30 min, nur bei grüner Ampel"];
+const DELOAD = ["PUSH Deload, 2 Sätze je Übung, RIR 3–4", "PULL Deload, 2 Sätze je Übung", "Lauf mit Kollege, locker Z2, 40 min", "frei", "LEGS Deload, 2 Sätze je Übung, ohne Finisher", "CALI Deload, 2 Sätze je Übung", "Spaziergang oder frei"];
 
 export function coachText(today: string, recovery: RecoveryData | null, training: TrainingWeekData | null): { lines: string[]; chips: string[] } {
   const w = planWeek(today);
