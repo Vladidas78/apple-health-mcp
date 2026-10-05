@@ -9,12 +9,13 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Dashboard, type DashboardData } from "@/components/dashboard/Dashboard";
-import type { BossProgressData, LeadLiftData, TodayState, WeekSlotsData, WeightTrendData } from "@/lib/dashboard/queries";
+import type { BossProgressData, LeadLiftData, NutritionData, TodayState, WeekSlotsData, WeightTrendData } from "@/lib/dashboard/queries";
 import { goalAt, heroMode } from "@/lib/dashboard/queries";
 import { levelFor, type XpLedger } from "@/lib/coach/xp";
 import { fillSlots, type SlotSession } from "@/lib/coach/slots";
 import { LEAD_LIFTS, MUSCLE_GROUPS, BODYWEIGHT_KG, HEVY_ROUTINES, epley, hevyRoutineLink } from "@/lib/coach/plan-defaults";
 import { addDays, berlinDay, weekStartOf } from "@/lib/dashboard/time";
+import { FONTS_HREF } from "@/lib/dashboard/fonts";
 
 const args = process.argv.slice(2);
 const empty = args.includes("--empty");
@@ -23,7 +24,7 @@ const rest = args.includes("--rest");
 const statsOpen = args.includes("--stats");
 const out = resolve(args.find((a) => !a.startsWith("--")) ?? "dashboard-preview.html");
 
-// Default: Wednesday in plan week 2, 07:12 Berlin, before PULL.
+// Default: Wednesday in plan week 2, 07:12 Berlin, before the run.
 // --after-push: Monday 12.10. 20:30 Berlin. --rest: Sunday 18.10. 10:00 Berlin.
 const NOW = afterPush ? new Date("2026-10-12T18:30:00Z") : rest ? new Date("2026-10-18T08:00:00Z") : new Date("2026-10-14T05:12:00Z");
 const TODAY = berlinDay(NOW);
@@ -101,9 +102,9 @@ function slotsFixture(): WeekSlotsData {
   const sessions = afterPush
     ? [ses("a", HEVY_ROUTINES.PUSH.title, WEEK, "PUSH", "hevy", 18)]
     : rest
-      ? [ses("a", HEVY_ROUTINES.PUSH.title, WEEK, "PUSH"), ses("b", HEVY_ROUTINES.LEGS.title, addDays(WEEK, 1), "LEGS"), ses("c", HEVY_ROUTINES.PULL.title, addDays(WEEK, 3), "PULL"),
-         ses("r1", "Laufen", addDays(WEEK, 2), null, "run", 0, 32), ses("d", HEVY_ROUTINES.CALI.title, addDays(WEEK, 4), "CALI"), ses("r2", "Laufen", addDays(WEEK, 5), null, "run", 0, 48)]
-      : [ses("a", "Push - A", WEEK, "PUSH"), ses("b", "Lower A", addDays(WEEK, 1), "LEGS")];
+      ? [ses("a", HEVY_ROUTINES.PUSH.title, WEEK, "PUSH"), ses("b", HEVY_ROUTINES.PULL.title, addDays(WEEK, 1), "PULL"), ses("c", HEVY_ROUTINES.LEGS.title, addDays(WEEK, 4), "LEGS"),
+         ses("r1", "Laufen", addDays(WEEK, 2), null, "run", 0, 32), ses("d", HEVY_ROUTINES.CALI.title, addDays(WEEK, 5), "CALI"), ses("r2", "Laufen", addDays(WEEK, 6), null, "run", 0, 48)]
+      : [ses("a", "Push - A", WEEK, "PUSH"), ses("b", "Pull - A", addDays(WEEK, 1), "PULL")];
   const slots = fillSlots(WEEK, sessions);
   return { weekStart: WEEK, slots, filled: slots.filter((x) => x.filled).length, weeksCounted: 2, weeksComplete: rest ? 1 : 0 };
 }
@@ -146,15 +147,21 @@ function bossFixture(): BossProgressData {
 function todayFixture(): TodayState {
   const xp = xpFixture();
   const weekday = (new Date(`${TODAY}T12:00:00Z`).getUTCDay() + 6) % 7;
-  const key = afterPush ? "PUSH" : rest ? null : "PULL";
-  const slot = key ? { key: key as "PUSH" | "PULL", label: key } : null;
-  const routine = key ? { key: key as "PUSH" | "PULL", id: HEVY_ROUTINES[key as "PUSH" | "PULL"].id, title: HEVY_ROUTINES[key as "PUSH" | "PULL"].title, href: hevyRoutineLink(HEVY_ROUTINES[key as "PUSH" | "PULL"].id) } : null;
+  // Wednesday and Sunday are run slots: no routine, no HEVY button.
+  const slot = afterPush ? { key: "PUSH" as const, label: "PUSH" } : { key: "LAUF" as const, label: "LAUF" };
+  const routine = afterPush ? { key: "PUSH" as const, id: HEVY_ROUTINES.PUSH.id, title: HEVY_ROUTINES.PUSH.title, href: hevyRoutineLink(HEVY_ROUTINES.PUSH.id) } : null;
   const base = {
     today: TODAY, weekday, planWeek: 2, slot, routine,
     done: afterPush ? [ses("a", HEVY_ROUTINES.PUSH.title, TODAY, "PUSH", "hevy", 18)] : [],
     events: xp.today, todayXp: xp.todayXp,
   };
   return { ...base, hero: heroMode(base, "unbekannt") };
+}
+
+function nutritionFixture(): NutritionData {
+  const prot = afterPush ? [162, 148, 171, 155, 180, 149, 112] : rest ? [162, 148, 171, 155, 180, 149, 158] : [162, 148, 171, 155, 180, 149, 96];
+  const days = prot.map((p, i) => ({ day: addDays(TODAY, i - 6), proteinG: p, kcal: 2050 + Math.round(p * 2.4) }));
+  return { today: days[6], days, proteinDaysHit: days.filter((d) => d.proteinG! >= 150).length, lastSampleAt: new Date(NOW.getTime() - 50 * 60_000) };
 }
 
 const full: DashboardData = {
@@ -169,15 +176,15 @@ const full: DashboardData = {
         ? [{ id: "a", title: HEVY_ROUTINES.PUSH.title, day: WEEK, weekday: 0, minutes: 61, sets: 18 }]
         : [
             { id: "a", title: "Push - A", day: WEEK, weekday: 0, minutes: 52, sets: 15 },
-            { id: "b", title: "Lower A", day: addDays(WEEK, 1), weekday: 1, minutes: 58, sets: 16 },
-            ...(rest ? [{ id: "c", title: "Pull - A", day: addDays(WEEK, 3), weekday: 3, minutes: 49, sets: 16 }, { id: "d", title: HEVY_ROUTINES.CALI.title, day: addDays(WEEK, 4), weekday: 4, minutes: 50, sets: 21 }] : []),
+            { id: "b", title: "Pull - A", day: addDays(WEEK, 1), weekday: 1, minutes: 58, sets: 16 },
+            ...(rest ? [{ id: "c", title: HEVY_ROUTINES.LEGS.title, day: addDays(WEEK, 4), weekday: 4, minutes: 49, sets: 16 }, { id: "d", title: HEVY_ROUTINES.CALI.title, day: addDays(WEEK, 5), weekday: 5, minutes: 50, sets: 21 }] : []),
           ];
       const days = Array.from({ length: 7 }, (_, i) => sessions.filter((s) => s.weekday === i));
       const have: Record<string, number> = afterPush
         ? { brust: 9, schultern: 5, trizeps: 4 }
         : rest
           ? { brust: 15, lat: 12, oberer_ruecken: 6, schultern: 10, bizeps: 5, trizeps: 6, quads: 10, hamstrings_glutes: 12, waden: 4, core: 6 }
-          : { brust: 8, lat: 7, oberer_ruecken: 4, schultern: 5, bizeps: 4, trizeps: 4, quads: 6, hamstrings_glutes: 6, waden: 2, core: 1 };
+          : { brust: 8, lat: 9, oberer_ruecken: 4, schultern: 5, bizeps: 4, trizeps: 4, core: 1 };
       return {
         weekStart: WEEK, days, sessions, totalSets: afterPush ? 18 : rest ? 86 : 31,
         muscles: MUSCLE_GROUPS.map((g) => ({ key: g.key, label: g.label, sets: have[g.key] ?? 0, target: g.target })),
@@ -202,8 +209,8 @@ const full: DashboardData = {
     data: {
       weekStart: WEEK, coachWeek: null, runDays: afterPush ? [] : rest ? [addDays(WEEK, 2), addDays(WEEK, 5)] : [addDays(WEEK, 1)],
       appleWorkouts: afterPush ? [] : rest
-        ? [{ id: "r1", name: "Laufen", day: addDays(WEEK, 2), minutes: 32, km: 6.1 }, { id: "r2", name: "Laufen", day: addDays(WEEK, 5), minutes: 48, km: 8.7 }]
-        : [{ id: "r1", name: "Laufen", day: addDays(WEEK, 1), minutes: 28, km: 5.4 }],
+        ? [{ id: "r1", name: "Laufen", day: addDays(WEEK, 2), minutes: 32, km: 6.1 }, { id: "r2", name: "Laufen", day: addDays(WEEK, 6), minutes: 48, km: 8.7 }]
+        : [],
     },
   },
   volume: {
@@ -214,6 +221,7 @@ const full: DashboardData = {
   slots: { ok: true, data: slotsFixture() },
   boss: { ok: true, data: bossFixture() },
   today: { ok: true, data: todayFixture() },
+  nutrition: { ok: true, data: nutritionFixture() },
 };
 
 // Empty state: fresh deploy with an empty database and one loader that failed.
@@ -231,23 +239,24 @@ const none: DashboardData = {
   slots: { ok: true, data: { weekStart: "2026-09-28", slots: fillSlots("2026-09-28", []), filled: 0, weeksCounted: 0, weeksComplete: 0 } },
   boss: { ok: false, error: "connection refused" },
   today: { ok: true, data: { today: "2026-10-04", weekday: 6, planWeek: 0, slot: null, routine: null, done: [], events: [], todayXp: 0, hero: { kind: "pause" } } },
+  nutrition: { ok: true, data: { today: { day: "2026-10-04", proteinG: null, kcal: null }, days: Array.from({ length: 7 }, (_, i) => ({ day: addDays("2026-10-04", i - 6), proteinG: null, kcal: null })), proteinDaysHit: 0, lastSampleAt: null } },
 };
 
 const data = empty ? none : full;
 const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../app/globals.css"), "utf8");
 let body = renderToStaticMarkup(<Dashboard data={data} refreshAction={async () => {}} logoutAction={async () => {}} status={empty ? null : "ok"} statsOpen={statsOpen} />);
 // --stats: also unfold every block inside STATS so the screenshot shows them.
-if (statsOpen) body = body.replaceAll('<details class="block block--fold', '<details open="" class="block block--fold');
+if (statsOpen) body = body.replaceAll('<details class="block ', '<details open="" class="block ');
 const html = `<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="color-scheme" content="dark" />
+<meta name="color-scheme" content="light dark" />
 <title>Coach – Vorschau (Fixture)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" />
+<link rel="stylesheet" href="${FONTS_HREF}" />
 <style>${css}</style>
 </head>
 <body>${body}</body>

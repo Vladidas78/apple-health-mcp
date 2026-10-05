@@ -567,7 +567,7 @@ export async function leadSets(db: Db, from?: Date, to?: Date): Promise<LeadSetR
 }
 
 // ---------------------------------------------------------------------------
-// 8. Week slots (Mo PUSH, Di LEGS, Mi LAUF, Do PULL, Fr frei, Sa CALI, So LAUF)
+// 8. Week slots (Mo PUSH, Di PULL, Mi LAUF, Do frei, Fr LEGS, Sa CALI, So LAUF)
 // ---------------------------------------------------------------------------
 
 export const SLOT_LABEL: Record<SlotKey, string> = { PUSH: "PUSH", LEGS: "LEGS", PULL: "PULL", LAUF: "LAUF", CALI: "CALI" };
@@ -729,6 +729,59 @@ export async function todayState(db: Db, now = new Date()): Promise<TodayState> 
   const todayXp = events.reduce((a, e) => a + e.xp, 0);
   const state = { today, weekday, planWeek: pw, slot, routine, done: slotSessionsOf(sessions, runs), events, todayXp };
   return { ...state, hero: heroMode(state, "unbekannt") };
+}
+
+// ---------------------------------------------------------------------------
+// 11. Nutrition (Yazio → Apple Health): protein and energy per Berlin day
+// ---------------------------------------------------------------------------
+
+// Health Auto Export sends dietary_energy in kJ; Yazio's own kcal are shown.
+const KJ_PER_KCAL = 4.184;
+
+export type NutritionDay = { day: string; proteinG: number | null; kcal: number | null };
+export type NutritionData = {
+  today: NutritionDay;
+  days: NutritionDay[]; // last 7 days including today, oldest first
+  proteinDaysHit: number; // days of the last 7 with protein >= PROTEIN_MIN_G
+  lastSampleAt: Date | null;
+};
+
+export const PROTEIN_TARGET_G = 175;
+export const PROTEIN_MIN_G = 150;
+export const KCAL_RANGE = { lo: 2100, hi: 2500 } as const;
+
+export async function nutrition(db: Db, now = new Date()): Promise<NutritionData> {
+  const today = berlinDay(now);
+  const first = addDays(today, -6);
+  const from = berlinMidnight(first);
+  const to = berlinMidnight(addDays(today, 1));
+  const rs = await rows<{ day: unknown; metric: string; total: unknown; latest: unknown }>(
+    db,
+    sql`SELECT to_char(date AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD') AS day, metric_name AS metric,
+               sum(qty)::float8 AS total, max(date) AS latest
+        FROM metric_samples
+        WHERE metric_name IN ('protein', 'dietary_energy') AND qty IS NOT NULL AND date >= ${from} AND date < ${to}
+        GROUP BY 1, 2`,
+  );
+  const byDay = new Map<string, NutritionDay>();
+  let lastSampleAt: Date | null = null;
+  for (let d = first; d <= today; d = addDays(d, 1)) byDay.set(d, { day: d, proteinG: null, kcal: null });
+  for (const r of rs) {
+    const d = byDay.get(dayOf(r.day));
+    const v = n(r.total);
+    if (!d || v === null) continue;
+    if (r.metric === "protein") d.proteinG = Math.round(v);
+    else d.kcal = Math.round(v / KJ_PER_KCAL);
+    const at = new Date(r.latest as string);
+    if (!lastSampleAt || at > lastSampleAt) lastSampleAt = at;
+  }
+  const days = [...byDay.values()];
+  return {
+    today: byDay.get(today)!,
+    days,
+    proteinDaysHit: days.filter((d) => d.proteinG !== null && d.proteinG >= PROTEIN_MIN_G).length,
+    lastSampleAt,
+  };
 }
 
 // ---------------------------------------------------------------------------

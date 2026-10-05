@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { makeTestDb, type TestDb } from "./helpers/db";
 import { metricSamples, workouts, hevyWorkouts, hevySets, hevyExerciseTemplates, hevyMeasurements, coachWeeks } from "@/db/schema";
 import {
-  weightTrend, goalAt, recovery, ampelFrom, trainingWeek, leadLifts, measurements, runWeek, weeklyVolume, lastHevySync,
+  weightTrend, goalAt, recovery, ampelFrom, trainingWeek, leadLifts, measurements, runWeek, weeklyVolume, lastHevySync, nutrition,
   type RecoveryMetric,
 } from "@/lib/dashboard/queries";
 import { addDays, berlinDay, berlinMidnight, weekStartOf, isoWeek, weekdayIndex } from "@/lib/dashboard/time";
@@ -338,5 +338,35 @@ describe("driver neutrality", () => {
     const db = await makeTestDb();
     const r = await db.execute(sql`SELECT to_char(now() AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD') AS day`);
     expect(typeof (r.rows[0] as { day: unknown }).day).toBe("string");
+  });
+});
+
+describe("nutrition", () => {
+  it("sums Yazio protein per Berlin day, converts kJ to kcal, counts days at or above the minimum", async () => {
+    const db = await makeTestDb();
+    // Today (Sun 04.10.): three protein samples, energy in kJ. Yesterday: one protein sample under the minimum.
+    await sample(db, "protein", "2026-10-04T08:00:00Z", { qty: 44.5 });
+    await sample(db, "protein", "2026-10-04T12:00:00Z", { qty: 38 });
+    await sample(db, "protein", "2026-10-04T16:00:00Z", { qty: 90.7 });
+    await sample(db, "dietary_energy", "2026-10-04T08:00:00Z", { qty: 1589.92 });
+    await sample(db, "dietary_energy", "2026-10-04T16:00:00Z", { qty: 3425 });
+    await sample(db, "protein", "2026-10-03T16:00:00Z", { qty: 120 });
+    // Before 00:00 Berlin on 03.10. (21:50 UTC on 02.10. is 23:50 Berlin): belongs to the 02.10.
+    await sample(db, "protein", "2026-10-02T21:50:00Z", { qty: 160 });
+    const f = await nutrition(db, NOW);
+    expect(f.today).toEqual({ day: TODAY, proteinG: 173, kcal: 1199 });
+    expect(f.days.map((d) => d.day)).toEqual([addDays(TODAY, -6), addDays(TODAY, -5), addDays(TODAY, -4), addDays(TODAY, -3), addDays(TODAY, -2), addDays(TODAY, -1), TODAY]);
+    expect(f.days.find((d) => d.day === "2026-10-03")).toEqual({ day: "2026-10-03", proteinG: 120, kcal: null });
+    expect(f.days.find((d) => d.day === "2026-10-02")).toEqual({ day: "2026-10-02", proteinG: 160, kcal: null });
+    expect(f.proteinDaysHit).toBe(2);
+    expect(f.lastSampleAt?.toISOString()).toBe("2026-10-04T16:00:00.000Z");
+  });
+  it("empty: seven null days, nothing hit", async () => {
+    const db = await makeTestDb();
+    const f = await nutrition(db, NOW);
+    expect(f.today).toEqual({ day: TODAY, proteinG: null, kcal: null });
+    expect(f.days).toHaveLength(7);
+    expect(f.proteinDaysHit).toBe(0);
+    expect(f.lastSampleAt).toBeNull();
   });
 });

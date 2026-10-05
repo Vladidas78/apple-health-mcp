@@ -9,7 +9,7 @@ export function RunWeek({ data, fold }: { data: Loaded<RunWeekData>; fold?: bool
       {fromLoader(data, (r) => (
         <>
           {r.coachWeek ? (
-            <div className="chips" style={{ marginBottom: 10 }}>
+            <div className="chips chips--stat" style={{ marginBottom: 10 }}>
               <span className="chip">{num(r.coachWeek.runKm)} km</span>
               <span className="chip">{minutes(r.coachWeek.runMinutes)}</span>
               <span className="chip">{r.coachWeek.runCount ?? "–"} Läufe</span>
@@ -17,7 +17,7 @@ export function RunWeek({ data, fold }: { data: Loaded<RunWeekData>; fold?: bool
               <span className="chip chip--mute">{r.coachWeek.source ?? "coach"}</span>
             </div>
           ) : null}
-          <div className="chips">
+          <div className="chips chips--stat">
             <span className="chip">
               Lauftage <b>{r.runDays.length}</b>
               {r.runDays.length ? <span className="mute"> · {r.runDays.map((d) => WEEKDAYS_DE[weekdayIndex(d)]).join(" ")}</span> : null}

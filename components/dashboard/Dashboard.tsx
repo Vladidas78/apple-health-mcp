@@ -1,13 +1,17 @@
 import type {
-  BossProgressData, LeadLiftData, MeasurementsData, RecoveryData, RunWeekData, TodayState, TrainingWeekData, WeekSlotsData, WeeklyVolumeData, WeightTrendData,
+  BossProgressData, LeadLiftData, MeasurementsData, NutritionData, RecoveryData, RunWeekData, TodayState, TrainingWeekData, WeekSlotsData, WeeklyVolumeData, WeightTrendData,
 } from "@/lib/dashboard/queries";
 import type { XpLedger } from "@/lib/coach/xp";
 import { berlinDay } from "@/lib/dashboard/time";
 import type { Loaded } from "./Block";
 import { Header, type SyncStatus } from "./Header";
-import { Today } from "./Today";
-import { WeekBar } from "./WeekBar";
-import { Boss } from "./Boss";
+import { Ampel } from "./Ampel";
+import { Figure } from "./Figure";
+import { WeekChips } from "./WeekChips";
+import { Numbers } from "./Numbers";
+import { Mission } from "./Mission";
+import { ChallengeNote } from "./ChallengeNote";
+import { NextUp } from "./NextUp";
 import { Stats } from "./Stats";
 import { Footer } from "./Footer";
 
@@ -25,11 +29,13 @@ export type DashboardData = {
   slots: Loaded<WeekSlotsData>;
   boss: Loaded<BossProgressData>;
   today: Loaded<TodayState>;
+  nutrition: Loaded<NutritionData>;
 };
 
 // Pure view: no data access, no Next imports, so it renders in the preview
-// script exactly as on the page. Four sections (Gina v2): HEUTE, DIESE WOCHE,
-// MISSION, STATS. Reward and action on top, everything explanatory folded below.
+// script exactly as on the page. Top to bottom: greeting and rank, traffic
+// light, figure, week chips, two numbers, mission, challenge, today with the
+// HEVY button, folded stats.
 export function Dashboard({ data, refreshAction, logoutAction, status, statsOpen }: {
   data: DashboardData;
   refreshAction?: (formData: FormData) => Promise<void>;
@@ -40,16 +46,18 @@ export function Dashboard({ data, refreshAction, logoutAction, status, statsOpen
   const today = berlinDay(data.now);
   return (
     <main className="wrap">
-      <Header />
-      <div className="grid grid--stack">
-        <Today today={today} recovery={data.recovery} training={data.training} xp={data.xp} state={data.today} />
-        <WeekBar slots={data.slots} xp={data.xp} training={data.training} today={today} />
-        <Boss boss={data.boss} xp={data.xp} lifts={data.lifts} />
-        <Stats
-          weight={data.weight} recovery={data.recovery} training={data.training} lifts={data.lifts}
-          measurements={data.measurements} run={data.run} volume={data.volume} today={today} open={statsOpen}
-        />
-      </div>
+      <Header today={today} xp={data.xp} />
+      <Ampel recovery={data.recovery} />
+      <NextUp today={today} state={data.today} recovery={data.recovery} training={data.training} />
+      <Figure training={data.training} />
+      <WeekChips slots={data.slots} today={today} />
+      <Numbers weight={data.weight} nutrition={data.nutrition} />
+      <Mission boss={data.boss} lifts={data.lifts} xp={data.xp} />
+      <ChallengeNote today={today} />
+      <Stats
+        weight={data.weight} recovery={data.recovery} training={data.training} lifts={data.lifts}
+        measurements={data.measurements} run={data.run} volume={data.volume} today={today} open={statsOpen}
+      />
       <Footer now={data.now} hevySync={data.hevySync} refreshAction={refreshAction} logoutAction={logoutAction} status={status} />
     </main>
   );

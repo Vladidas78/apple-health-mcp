@@ -61,7 +61,7 @@ describe("routine mapping and slots", () => {
       ({ id, title: id, day, kind, routineKey, sets: 12, minutes: 50 });
     const slots = fillSlots(W1, [s("pull", "2026-10-08", "PULL"), s("push", "2026-10-06", "PUSH"), s("push2", "2026-10-10", "PUSH"), s("r1", "2026-10-07", null, "run"), s("r2", "2026-10-11", null, "run"), s("r3", "2026-10-11", null, "run")]);
     expect(slots.map((x) => [x.key, x.weekday, x.filled?.id ?? null])).toEqual([
-      ["PUSH", 0, "push"], ["LEGS", 1, null], ["LAUF", 2, "r1"], ["PULL", 3, "pull"], ["CALI", 5, null], ["LAUF", 6, "r2"],
+      ["PUSH", 0, "push"], ["PULL", 1, "pull"], ["LAUF", 2, "r1"], ["LEGS", 4, null], ["CALI", 5, null], ["LAUF", 6, "r2"],
     ]);
     expect(slots[0].day).toBe("2026-10-05");
   });
@@ -73,7 +73,7 @@ describe("awardXp", () => {
     await templates(db);
     await hevyWorkout(db, "old", "Push - A", "2026-09-30T16:00:00Z", 60, [filler("79D0BB3A", 15, 80, 6)]); // before the plan
     await hevyWorkout(db, "push1", PUSH, "2026-10-05T16:00:00Z", 55, [filler("79D0BB3A", 12, 80, 6)]);
-    await hevyWorkout(db, "short", "LEGS (Di) · Kraft & Figur", "2026-10-06T16:00:00Z", 20, [filler("DDCC3821", 8, 70, 8)]); // 8 sets
+    await hevyWorkout(db, "short", "LEGS (Fr) · Kraft & Figur", "2026-10-06T16:00:00Z", 20, [filler("DDCC3821", 8, 70, 8)]); // 8 sets
     await appleRun(db, "run1", "2026-10-08T05:30:00Z", 25);
     await appleRun(db, "walkish", "2026-10-09T05:30:00Z", 15); // too short
     await appleRun(db, "yoga", "2026-10-09T18:00:00Z", 40, "Yoga", null); // not a run
