@@ -17,7 +17,7 @@ export function RecoveryLight({ data, fold }: { data: Loaded<RecoveryData>; fold
             {noData ? (
               <Empty>Keine Ruhepuls- oder HRV-Werte der letzten 36 Stunden. Watch tragen, Health Auto Export prüfen.</Empty>
             ) : (
-              <div className="chips">
+              <div className="chips chips--stat">
                 <span className="chip">
                   RHR <b>{num(r.rhr.today, 0)}</b> / 7d {num(r.rhr.mean7, 0)} / Basis {num(r.rhr.baseline28, 0)}
                 </span>

@@ -15,6 +15,7 @@ import { levelFor, type XpLedger } from "@/lib/coach/xp";
 import { fillSlots, type SlotSession } from "@/lib/coach/slots";
 import { LEAD_LIFTS, MUSCLE_GROUPS, BODYWEIGHT_KG, HEVY_ROUTINES, epley, hevyRoutineLink } from "@/lib/coach/plan-defaults";
 import { addDays, berlinDay, weekStartOf } from "@/lib/dashboard/time";
+import { FONTS_HREF } from "@/lib/dashboard/fonts";
 
 const args = process.argv.slice(2);
 const empty = args.includes("--empty");
@@ -23,7 +24,7 @@ const rest = args.includes("--rest");
 const statsOpen = args.includes("--stats");
 const out = resolve(args.find((a) => !a.startsWith("--")) ?? "dashboard-preview.html");
 
-// Default: Wednesday in plan week 2, 07:12 Berlin, before PULL.
+// Default: Wednesday in plan week 2, 07:12 Berlin, before the run.
 // --after-push: Monday 12.10. 20:30 Berlin. --rest: Sunday 18.10. 10:00 Berlin.
 const NOW = afterPush ? new Date("2026-10-12T18:30:00Z") : rest ? new Date("2026-10-18T08:00:00Z") : new Date("2026-10-14T05:12:00Z");
 const TODAY = berlinDay(NOW);
@@ -146,9 +147,9 @@ function bossFixture(): BossProgressData {
 function todayFixture(): TodayState {
   const xp = xpFixture();
   const weekday = (new Date(`${TODAY}T12:00:00Z`).getUTCDay() + 6) % 7;
-  const key = afterPush ? "PUSH" : rest ? null : "PULL";
-  const slot = key ? { key: key as "PUSH" | "PULL", label: key } : null;
-  const routine = key ? { key: key as "PUSH" | "PULL", id: HEVY_ROUTINES[key as "PUSH" | "PULL"].id, title: HEVY_ROUTINES[key as "PUSH" | "PULL"].title, href: hevyRoutineLink(HEVY_ROUTINES[key as "PUSH" | "PULL"].id) } : null;
+  // Wednesday and Sunday are run slots: no routine, no HEVY button.
+  const slot = afterPush ? { key: "PUSH" as const, label: "PUSH" } : { key: "LAUF" as const, label: "LAUF" };
+  const routine = afterPush ? { key: "PUSH" as const, id: HEVY_ROUTINES.PUSH.id, title: HEVY_ROUTINES.PUSH.title, href: hevyRoutineLink(HEVY_ROUTINES.PUSH.id) } : null;
   const base = {
     today: TODAY, weekday, planWeek: 2, slot, routine,
     done: afterPush ? [ses("a", HEVY_ROUTINES.PUSH.title, TODAY, "PUSH", "hevy", 18)] : [],
@@ -237,17 +238,17 @@ const data = empty ? none : full;
 const css = readFileSync(resolve(dirname(fileURLToPath(import.meta.url)), "../app/globals.css"), "utf8");
 let body = renderToStaticMarkup(<Dashboard data={data} refreshAction={async () => {}} logoutAction={async () => {}} status={empty ? null : "ok"} statsOpen={statsOpen} />);
 // --stats: also unfold every block inside STATS so the screenshot shows them.
-if (statsOpen) body = body.replaceAll('<details class="block block--fold', '<details open="" class="block block--fold');
+if (statsOpen) body = body.replaceAll('<details class="block ', '<details open="" class="block ');
 const html = `<!doctype html>
 <html lang="de">
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<meta name="color-scheme" content="dark" />
+<meta name="color-scheme" content="light dark" />
 <title>Coach – Vorschau (Fixture)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow:wght@400;600&family=JetBrains+Mono:wght@400;600&display=swap" />
+<link rel="stylesheet" href="${FONTS_HREF}" />
 <style>${css}</style>
 </head>
 <body>${body}</body>

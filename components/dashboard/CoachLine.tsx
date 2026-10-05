@@ -63,7 +63,7 @@ export function CoachLine({ today, recovery, training }: { today: string; recove
       {lines.map((l, i) => (
         <p className="coach__line" key={i}>{l}</p>
       ))}
-      <div className="chips coach__chips">
+      <div className="chips chips--stat">
         {chips.map((c) => (
           <span className="chip" key={c}>{c}</span>
         ))}

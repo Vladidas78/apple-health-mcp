@@ -13,13 +13,13 @@ export default async function LoginPage({
   const { error } = await searchParams;
   const configured = !!process.env.COACH_WEB_SECRET;
   return (
-    <main className="wrap" style={{ maxWidth: 420, paddingTop: "12vh" }}>
-      <h1 className="head" style={{ fontSize: 30, margin: "0 0 4px" }}>Coach</h1>
-      <p className="mono small mute" style={{ margin: "0 0 20px" }}>Anmeldung</p>
+    <main className="wrap login">
+      <h1 className="top__h">Hey Vladi</h1>
+      <p className="top__sub" style={{ margin: "4px 0 20px" }}>Anmeldung</p>
       {!configured && (
-        <p className="mono small mute">COACH_WEB_SECRET ist nicht gesetzt. Ohne diese Umgebungsvariable ist kein Login möglich.</p>
+        <p className="note">COACH_WEB_SECRET ist nicht gesetzt. Ohne diese Umgebungsvariable ist kein Login möglich.</p>
       )}
-      {error && <p className="mono small" style={{ color: "var(--iron)" }}>Falsches Passwort.</p>}
+      {error && <p className="note" style={{ color: "var(--red)", fontWeight: 700 }}>Falsches Passwort.</p>}
       <form action={login}>
         <input
           type="password"
@@ -28,10 +28,9 @@ export default async function LoginPage({
           autoFocus
           required
           autoComplete="current-password"
-          className="mono"
-          style={{ width: "100%", padding: ".7rem", fontSize: "1rem", background: "var(--panel)", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 2 }}
+          className="login__in"
         />
-        <button type="submit" disabled={!configured} className="btn btn--gold" style={{ marginTop: ".75rem", width: "100%", padding: ".7rem" }}>
+        <button type="submit" disabled={!configured} className="btn btn--gold login__btn">
           Anmelden
         </button>
       </form>
