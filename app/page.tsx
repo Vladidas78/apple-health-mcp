@@ -7,7 +7,7 @@ import { optionalEnv } from "@/lib/env";
 import { verifyWeb, WEB_SESSION_COOKIE } from "@/lib/web-auth";
 import { weekStartOf } from "@/lib/dashboard/time";
 import {
-  bossProgress, lastHevySync, leadLifts, measurements, recovery, runWeek, todayState, trainingWeek, weekSlots, weeklyVolume, weightTrend,
+  bossProgress, lastHevySync, leadLifts, measurements, nutrition, recovery, runWeek, todayState, trainingWeek, weekSlots, weeklyVolume, weightTrend,
 } from "@/lib/dashboard/queries";
 import { awardXp, setBaselines, xpLedger } from "@/lib/coach/xp";
 import { Dashboard, type DashboardData } from "@/components/dashboard/Dashboard";
@@ -52,7 +52,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
     console.error("[dashboard] xp/baselines failed:", e instanceof Error ? e.message : e);
   }
 
-  const [weight, rec, training, lifts, meas, run, volume, xp, slots, boss, today, hevySync] = await Promise.all([
+  const [weight, rec, training, lifts, meas, run, volume, xp, slots, boss, today, food, hevySync] = await Promise.all([
     load(weightTrend(db, 8, now)),
     load(recovery(db, now)),
     load(trainingWeek(db, weekStart)),
@@ -64,10 +64,11 @@ export default async function Home({ searchParams }: { searchParams: Promise<{ s
     load(weekSlots(db, weekStart)),
     load(bossProgress(db, now)),
     load(todayState(db, now)),
+    load(nutrition(db, now)),
     lastHevySync(db).catch(() => null),
   ]);
 
-  const data: DashboardData = { now, hevySync, weight, recovery: rec, training, lifts, measurements: meas, run, volume, xp, slots, boss, today };
+  const data: DashboardData = { now, hevySync, weight, recovery: rec, training, lifts, measurements: meas, run, volume, xp, slots, boss, today, nutrition: food };
   const canRefresh = !!optionalEnv("HEVY_API_KEY");
   return <Dashboard data={data} refreshAction={canRefresh ? refreshHevy : undefined} logoutAction={logout} status={status} />;
 }

@@ -9,7 +9,7 @@ import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderToStaticMarkup } from "react-dom/server";
 import { Dashboard, type DashboardData } from "@/components/dashboard/Dashboard";
-import type { BossProgressData, LeadLiftData, TodayState, WeekSlotsData, WeightTrendData } from "@/lib/dashboard/queries";
+import type { BossProgressData, LeadLiftData, NutritionData, TodayState, WeekSlotsData, WeightTrendData } from "@/lib/dashboard/queries";
 import { goalAt, heroMode } from "@/lib/dashboard/queries";
 import { levelFor, type XpLedger } from "@/lib/coach/xp";
 import { fillSlots, type SlotSession } from "@/lib/coach/slots";
@@ -158,6 +158,12 @@ function todayFixture(): TodayState {
   return { ...base, hero: heroMode(base, "unbekannt") };
 }
 
+function nutritionFixture(): NutritionData {
+  const prot = afterPush ? [162, 148, 171, 155, 180, 149, 112] : rest ? [162, 148, 171, 155, 180, 149, 158] : [162, 148, 171, 155, 180, 149, 96];
+  const days = prot.map((p, i) => ({ day: addDays(TODAY, i - 6), proteinG: p, kcal: 2050 + Math.round(p * 2.4) }));
+  return { today: days[6], days, proteinDaysHit: days.filter((d) => d.proteinG! >= 150).length, lastSampleAt: new Date(NOW.getTime() - 50 * 60_000) };
+}
+
 const full: DashboardData = {
   now: NOW,
   hevySync: new Date(NOW.getTime() - (rest ? 26 * 3_600_000 : 28 * 60_000)),
@@ -215,6 +221,7 @@ const full: DashboardData = {
   slots: { ok: true, data: slotsFixture() },
   boss: { ok: true, data: bossFixture() },
   today: { ok: true, data: todayFixture() },
+  nutrition: { ok: true, data: nutritionFixture() },
 };
 
 // Empty state: fresh deploy with an empty database and one loader that failed.
@@ -232,6 +239,7 @@ const none: DashboardData = {
   slots: { ok: true, data: { weekStart: "2026-09-28", slots: fillSlots("2026-09-28", []), filled: 0, weeksCounted: 0, weeksComplete: 0 } },
   boss: { ok: false, error: "connection refused" },
   today: { ok: true, data: { today: "2026-10-04", weekday: 6, planWeek: 0, slot: null, routine: null, done: [], events: [], todayXp: 0, hero: { kind: "pause" } } },
+  nutrition: { ok: true, data: { today: { day: "2026-10-04", proteinG: null, kcal: null }, days: Array.from({ length: 7 }, (_, i) => ({ day: addDays("2026-10-04", i - 6), proteinG: null, kcal: null })), proteinDaysHit: 0, lastSampleAt: null } },
 };
 
 const data = empty ? none : full;
