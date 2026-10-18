@@ -22,7 +22,7 @@ export function RecoveryLight({ data, fold }: { data: Loaded<RecoveryData>; fold
                   RHR <b>{num(r.rhr.today, 0)}</b> / 7d {num(r.rhr.mean7, 0)} / Basis {num(r.rhr.baseline28, 0)}
                 </span>
                 <span className="chip">
-                  HRV <b>{num(r.hrv.today, 0)}</b> / 7d {num(r.hrv.mean7, 0)}
+                  Nacht-HRV <b>{num(r.hrv.today, 0)}</b> / 7d {num(r.hrv.mean7, 0)}
                 </span>
                 <span className="chip">Schlaf <b>{num(r.sleep.hours, 1)} h</b></span>
               </div>
