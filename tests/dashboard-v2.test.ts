@@ -103,14 +103,14 @@ describe("bossProgress", () => {
 });
 
 describe("todayState + heroMode", () => {
-  it("Monday in the plan: PUSH slot with routine deep link, today's events after the award", async () => {
+  it("Tuesday in the plan: PUSH slot with routine deep link, today's events after the award", async () => {
     const db = await makeTestDb();
     await templates(db);
-    const now = new Date("2026-10-12T18:30:00Z"); // Monday 20:30 Berlin
+    const now = new Date("2026-10-13T18:30:00Z"); // Tuesday 20:30 Berlin
     await hevyWorkout(db, "h", "Push - A", "2026-09-30T16:00:00Z", 60, [{ template: "79D0BB3A", sets: [{ kg: 80, reps: 6 }] }]);
-    await hevyWorkout(db, "push2", PUSH, "2026-10-12T16:00:00Z", 55, [{ template: "79D0BB3A", sets: [{ kg: 82.5, reps: 6 }, ...filler("79D0BB3A", 11, 60, 8).sets] }]);
+    await hevyWorkout(db, "push2", PUSH, "2026-10-13T16:00:00Z", 55, [{ template: "79D0BB3A", sets: [{ kg: 82.5, reps: 6 }, ...filler("79D0BB3A", 11, 60, 8).sets] }]);
     const before = await todayState(db, now);
-    expect(before).toMatchObject({ today: "2026-10-12", weekday: 0, planWeek: 2, slot: { key: "PUSH", label: "PUSH" }, todayXp: 0, events: [] });
+    expect(before).toMatchObject({ today: "2026-10-13", weekday: 1, planWeek: 2, slot: { key: "PUSH", label: "PUSH" }, todayXp: 0, events: [] });
     expect(before.routine).toEqual({ key: "PUSH", id: HEVY_ROUTINES.PUSH.id, title: HEVY_ROUTINES.PUSH.title, href: `hevy://routine/${HEVY_ROUTINES.PUSH.id}` });
     expect(before.done.map((d) => d.id)).toEqual(["push2"]);
     expect(before.hero).toEqual({ kind: "slot", label: "PUSH" });
@@ -123,30 +123,31 @@ describe("todayState + heroMode", () => {
     expect(after.hero).toEqual({ kind: "xp", xp: 180 });
     expect(heroMode(after, "stopp")).toEqual({ kind: "xp", xp: 180 }); // reward beats the brake in the hero
     // Still there late in the evening, gone the next morning.
-    expect((await todayState(db, new Date("2026-10-12T21:55:00Z"))).todayXp).toBe(180);
-    const tue = await todayState(db, new Date("2026-10-13T06:00:00Z"));
-    expect(tue).toMatchObject({ todayXp: 0, slot: { key: "PULL" }, hero: { kind: "slot", label: "PULL" } });
-    expect(tue.routine?.id).toBe(HEVY_ROUTINES.PULL.id);
+    expect((await todayState(db, new Date("2026-10-13T21:55:00Z"))).todayXp).toBe(180);
+    const wed = await todayState(db, new Date("2026-10-14T06:00:00Z"));
+    expect(wed).toMatchObject({ todayXp: 0, slot: { key: "PULL" }, hero: { kind: "slot", label: "PULL" } });
+    expect(wed.routine?.id).toBe(HEVY_ROUTINES.PULL.id);
     const fri = await todayState(db, new Date("2026-10-16T06:00:00Z"));
     expect(fri).toMatchObject({ slot: { key: "LEGS" }, hero: { kind: "slot", label: "LEGS" } });
     expect(fri.routine?.id).toBe(HEVY_ROUTINES.LEGS.id);
   });
-  it("run day has no routine, Thursday and days outside the plan are PAUSE", async () => {
+  it("run days have no routine, Monday and days outside the plan are PAUSE", async () => {
     const db = await makeTestDb();
-    const wed = await todayState(db, new Date("2026-10-14T10:00:00Z"));
-    expect(wed.slot).toEqual({ key: "LAUF", label: "LAUF" });
-    expect(wed.routine).toBeNull();
+    const thu = await todayState(db, new Date("2026-10-15T10:00:00Z"));
+    expect(thu.slot).toEqual({ key: "LAUF", label: "LAUF" });
+    expect(thu.routine).toBeNull();
     const sun = await todayState(db, new Date("2026-10-18T10:00:00Z"));
     expect(sun.slot).toEqual({ key: "LAUF", label: "LAUF" });
-    const thu = await todayState(db, new Date("2026-10-15T10:00:00Z"));
-    expect(thu.slot).toBeNull();
-    expect(thu.hero).toEqual({ kind: "pause" });
+    const mon = await todayState(db, new Date("2026-10-19T10:00:00Z"));
+    expect(mon.slot).toBeNull();
+    expect(mon.routine).toBeNull();
+    expect(mon.hero).toEqual({ kind: "pause" });
     const pre = await todayState(db, new Date("2026-10-04T10:00:00Z"));
     expect(pre).toMatchObject({ planWeek: 0, slot: null, routine: null, hero: { kind: "pause" } });
     const post = await todayState(db, new Date("2027-01-04T10:00:00Z"));
     expect(post).toMatchObject({ planWeek: 14, slot: null });
-    expect(heroMode(thu, "gelb")).toEqual({ kind: "pause" });
+    expect(heroMode(mon, "gelb")).toEqual({ kind: "pause" });
     expect(heroMode(sun, "gelb")).toEqual({ kind: "slot", label: "LAUF" });
-    expect(heroMode(thu, "stopp")).toEqual({ kind: "stopp" });
+    expect(heroMode(mon, "stopp")).toEqual({ kind: "stopp" });
   });
 });
