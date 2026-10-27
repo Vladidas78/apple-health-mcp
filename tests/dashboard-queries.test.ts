@@ -3,7 +3,7 @@ import { sql } from "drizzle-orm";
 import { makeTestDb, type TestDb } from "./helpers/db";
 import { metricSamples, workouts, hevyWorkouts, hevySets, hevyExerciseTemplates, hevyMeasurements, coachWeeks } from "@/db/schema";
 import {
-  weightTrend, goalAt, recovery, ampelFrom, trainingWeek, leadLifts, measurements, runWeek, weeklyVolume, lastHevySync, nutrition,
+  weightTrend, goalAt, recovery, ampelFrom, trainingWeek, leadLifts, measurements, runWeek, weeklyVolume, lastHevySync, nutrition, vo2max,
   type RecoveryMetric,
 } from "@/lib/dashboard/queries";
 import { addDays, berlinDay, berlinMidnight, weekStartOf, isoWeek, weekdayIndex } from "@/lib/dashboard/time";
@@ -234,7 +234,7 @@ describe("leadLifts", () => {
     const wA = bench.weeks.find((w) => w.weekStart === "2026-09-21")!.best!;
     expect(wA).toMatchObject({ weightKg: 80, reps: 6, e1rm: 96, value: 96 }); // 80×1.2 = 96 > 85×1.1 = 93.5
     expect(bench.latest).toMatchObject({ weightKg: 82.5, reps: 5, e1rm: 96.3 });
-    expect(bench.boss).toEqual({ weightKg: 90, reps: 3, e1rm: 99, value: 99 });
+    expect(bench.boss).toEqual({ weightKg: 100, reps: 3, e1rm: 110, value: 110 });
     expect(bench.endBoss).toMatch(/100 kg/);
 
     const pu = lifts[1];
@@ -253,7 +253,7 @@ describe("leadLifts", () => {
     expect(wpu.boss).toBeNull();
     expect(wpu.weeks.filter((w) => w.best).length).toBe(1);
 
-    expect(lifts[3].boss).toMatchObject({ weightKg: 17.5, reps: 8 });
+    expect(lifts[3].boss).toMatchObject({ weightKg: 25, reps: 8 });
     expect(lifts[4].latest).toBeNull();
   });
 
@@ -368,5 +368,22 @@ describe("nutrition", () => {
     expect(f.days).toHaveLength(7);
     expect(f.proteinDaysHit).toBe(0);
     expect(f.lastSampleAt).toBeNull();
+  });
+});
+
+describe("vo2max", () => {
+  it("latest estimate of the last 30 days against the last value before the plan start", async () => {
+    const db = await makeTestDb();
+    await sample(db, "vo2_max", "2026-09-20T08:00:00Z", { qty: 55.6 });
+    await sample(db, "vo2_max", "2026-09-30T08:00:00Z", { qty: 56.6 });
+    await sample(db, "vo2_max", "2026-10-22T08:00:00Z", { qty: 56.14 });
+    const v = await vo2max(db, new Date("2026-10-27T10:00:00Z"));
+    expect(v).toEqual({ latest: 56.1, latestDay: "2026-10-22", baseline: 56.6, baselineDay: "2026-09-30", target: 55.5 });
+    const stale = await vo2max(db, new Date("2026-12-27T10:00:00Z"));
+    expect(stale).toMatchObject({ latest: null, latestDay: null, baseline: 56.6 });
+  });
+  it("empty: nothing known, target still set", async () => {
+    const db = await makeTestDb();
+    expect(await vo2max(db, new Date("2026-10-27T10:00:00Z"))).toEqual({ latest: null, latestDay: null, baseline: null, baselineDay: null, target: 55.5 });
   });
 });

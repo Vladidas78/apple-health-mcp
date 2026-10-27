@@ -455,3 +455,4 @@ details.block--fold[open] > summary { margin-bottom: 10px; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+.mrows .warm { color: var(--orange); }

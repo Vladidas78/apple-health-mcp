@@ -1,12 +1,12 @@
-import type { BossProgressData, LeadLiftData } from "@/lib/dashboard/queries";
+import type { BossProgressData, LeadLiftData, Vo2Data } from "@/lib/dashboard/queries";
 import type { XpLedger } from "@/lib/coach/xp";
 import { PLAN } from "@/lib/coach/plan-defaults";
 import { fmtDay } from "@/lib/dashboard/time";
 import { num } from "./format";
 import { fromLoader, type Loaded } from "./Block";
 
-// MISSION KW 52: four lift cards, one accent each, then waist and weight as
-// two lines, then this week's new bests.
+// MISSION KW 52: four lift cards, one accent each, then waist, weight and the
+// VO2max hold goal as lines, then this week's new bests.
 
 const TONE: Record<string, string> = { bench: "y", pullup_bw: "o", dip: "r", squat: "b" };
 
@@ -35,7 +35,7 @@ function fmtPr(mode: unknown, v: { weightKg?: number; reps?: number } | undefine
   return `${num(v.weightKg)} × ${v.reps ?? "–"}`;
 }
 
-export function Mission({ boss, lifts, xp }: { boss: Loaded<BossProgressData>; lifts: Loaded<LeadLiftData[]>; xp: Loaded<XpLedger> }) {
+export function Mission({ boss, lifts, xp, vo2 }: { boss: Loaded<BossProgressData>; lifts: Loaded<LeadLiftData[]>; xp: Loaded<XpLedger>; vo2: Loaded<Vo2Data> }) {
   const ls = lifts.ok ? lifts.data : [];
   return (
     <section className="card" aria-label="Mission">
@@ -64,6 +64,14 @@ export function Mission({ boss, lifts, xp }: { boss: Loaded<BossProgressData>; l
                   </span>
                 </li>
               ))}
+              {vo2.ok ? (
+                <li title={vo2.data.baseline !== null ? `Start ${num(vo2.data.baseline)} (${fmtDay(vo2.data.baselineDay!)})` : undefined}>
+                  <span>Ausdauer (VO2max)</span>
+                  <span className="mrows__v">
+                    <b className={vo2.data.latest !== null && vo2.data.latest < vo2.data.target ? "warm" : ""}>{num(vo2.data.latest)}</b> <span className="mute">· Ziel ≥ {num(vo2.data.target)}</span>
+                  </span>
+                </li>
+              ) : null}
             </ul>
             {b.rows.some((r) => r.provisional) ? <p className="note">Basis vorläufig bis {fmtDay(b.windowEnd)}: bester Wert der ersten 14 Tage.</p> : null}
           </>

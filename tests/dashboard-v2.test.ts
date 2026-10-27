@@ -60,27 +60,27 @@ describe("bossProgress", () => {
     const db = await makeTestDb();
     await templates(db);
     await db.insert(coachLiftBaselines).values([
-      { liftKey: "bench", value: "90", day: "2026-10-06", mode: "e1rm" }, // target 99 → 9 kg span
+      { liftKey: "bench", value: "90", day: "2026-10-06", mode: "e1rm" }, // target 110 (100 × 3) → 20 kg span
       { liftKey: "pullup_bw", value: "12", day: "2026-10-07", mode: "reps" }, // target 16
-      { liftKey: "dip", value: "10", day: "2026-10-09", mode: "added" }, // target 17.5
+      { liftKey: "dip", value: "10", day: "2026-10-09", mode: "added" }, // target 25
       { liftKey: "squat", value: "100", day: "2026-10-06", mode: "e1rm" }, // target 108
       { liftKey: "waist", value: "98", day: "2026-10-05", mode: "cm" }, // target 94
       { liftKey: "weight", value: "92.6", day: "2026-10-05", mode: "kg" }, // target 88.5
     ]);
     const now = new Date("2026-11-10T10:00:00Z");
     await hevyWorkout(db, "p", PUSH, "2026-11-09T16:00:00Z", 60, [
-      { template: "79D0BB3A", sets: [{ kg: 82.5, reps: 5 }] }, // e1RM 96.3 → 70 %
+      { template: "79D0BB3A", sets: [{ kg: 90, reps: 6 }] }, // e1RM 108 → 90 %
       { template: "1B2B1E7C", sets: [{ reps: 15 }, { reps: 14 }] }, // 14 → 50 %
-      { template: "29472BE1", sets: [{ kg: 20, reps: 8 }] }, // 20 > 17.5 → 100 %
+      { template: "29472BE1", sets: [{ kg: 27.5, reps: 8 }] }, // 27.5 > 25 → 100 %
       { template: "DDCC3821", sets: [{ kg: 70, reps: 8 }] }, // 88.7 < baseline → 0 %
     ]);
     await db.insert(hevyMeasurements).values([{ date: "2026-11-08", waistCm: "96", raw: {} }, { date: "2026-10-20", waistCm: "97.5", raw: {} }]);
     for (let i = 0; i < 5; i++) await sample(db, "weight_body_mass", `2026-11-0${5 + i}T05:00:00Z`, { qty: 90.55 }); // 7d mean 90.6 → 49 %
     const b = await bossProgress(db, now);
     expect(b.rows.map((r) => [r.key, r.pct, r.provisional])).toEqual([
-      ["bench", 70, false], ["pullup_bw", 50, false], ["dip", 100, false], ["squat", 0, false], ["waist", 50, false], ["weight", 49, false],
+      ["bench", 90, false], ["pullup_bw", 50, false], ["dip", 100, false], ["squat", 0, false], ["waist", 50, false], ["weight", 49, false],
     ]);
-    expect(b.rows[0]).toMatchObject({ label: "Bank", unit: "kg", baseline: 90, current: 96.3, target: 99, decreasing: false });
+    expect(b.rows[0]).toMatchObject({ label: "Bank", unit: "kg", baseline: 90, current: 108, target: 110, decreasing: false });
     expect(b.rows[4]).toMatchObject({ label: "Taille", baseline: 98, current: 96, currentDay: "2026-11-08", target: 94, decreasing: true });
     expect(b.rows[5]).toMatchObject({ label: "Gewicht", target: 88.5, current: 90.6 });
   });

@@ -1,5 +1,5 @@
 import type {
-  BossProgressData, LeadLiftData, MeasurementsData, NutritionData, RecoveryData, RunWeekData, TodayState, TrainingWeekData, WeekSlotsData, WeeklyVolumeData, WeightTrendData,
+  BossProgressData, LeadLiftData, MeasurementsData, NutritionData, RecoveryData, RunWeekData, TodayState, TrainingWeekData, Vo2Data, WeekSlotsData, WeeklyVolumeData, WeightTrendData,
 } from "@/lib/dashboard/queries";
 import type { XpLedger } from "@/lib/coach/xp";
 import { berlinDay } from "@/lib/dashboard/time";
@@ -30,6 +30,7 @@ export type DashboardData = {
   boss: Loaded<BossProgressData>;
   today: Loaded<TodayState>;
   nutrition: Loaded<NutritionData>;
+  vo2: Loaded<Vo2Data>;
 };
 
 // Pure view: no data access, no Next imports, so it renders in the preview
@@ -52,7 +53,7 @@ export function Dashboard({ data, refreshAction, logoutAction, status, statsOpen
       <Figure training={data.training} />
       <WeekChips slots={data.slots} today={today} />
       <Numbers weight={data.weight} nutrition={data.nutrition} />
-      <Mission boss={data.boss} lifts={data.lifts} xp={data.xp} />
+      <Mission boss={data.boss} lifts={data.lifts} xp={data.xp} vo2={data.vo2} />
       <ChallengeNote today={today} />
       <Stats
         weight={data.weight} recovery={data.recovery} training={data.training} lifts={data.lifts}
