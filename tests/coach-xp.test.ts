@@ -61,9 +61,9 @@ describe("routine mapping and slots", () => {
       ({ id, title: id, day, kind, routineKey, sets: 12, minutes: 50 });
     const slots = fillSlots(W1, [s("pull", "2026-10-08", "PULL"), s("push", "2026-10-06", "PUSH"), s("push2", "2026-10-10", "PUSH"), s("r1", "2026-10-07", null, "run"), s("r2", "2026-10-11", null, "run"), s("r3", "2026-10-11", null, "run")]);
     expect(slots.map((x) => [x.key, x.weekday, x.filled?.id ?? null])).toEqual([
-      ["PUSH", 0, "push"], ["PULL", 1, "pull"], ["LAUF", 2, "r1"], ["LEGS", 4, null], ["CALI", 5, null], ["LAUF", 6, "r2"],
+      ["PUSH", 1, "push"], ["PULL", 2, "pull"], ["LAUF", 3, "r1"], ["LEGS", 4, null], ["CALI", 5, null], ["LAUF", 6, "r2"],
     ]);
-    expect(slots[0].day).toBe("2026-10-05");
+    expect(slots[0].day).toBe("2026-10-06"); // PUSH is the Tuesday slot
   });
 });
 

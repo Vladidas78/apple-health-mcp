@@ -2,7 +2,7 @@
 // design can be checked (and screenshotted) without a database or a login.
 // Pure script, never a route:
 //   npm run preview:dashboard [--empty | --after-push | --rest] [--stats] [out.html]
-// --after-push: Monday evening after PUSH with a PR (hero "+180 XP", level 2).
+// --after-push: Tuesday evening after PUSH with a PR (hero "+180 XP", level 2).
 // --rest: Sunday, no events, week 6/6. --stats: STATS section rendered open.
 import { writeFileSync, readFileSync, mkdirSync } from "node:fs";
 import { dirname, resolve } from "node:path";
@@ -24,9 +24,9 @@ const rest = args.includes("--rest");
 const statsOpen = args.includes("--stats");
 const out = resolve(args.find((a) => !a.startsWith("--")) ?? "dashboard-preview.html");
 
-// Default: Wednesday in plan week 2, 07:12 Berlin, before the run.
-// --after-push: Monday 12.10. 20:30 Berlin. --rest: Sunday 18.10. 10:00 Berlin.
-const NOW = afterPush ? new Date("2026-10-12T18:30:00Z") : rest ? new Date("2026-10-18T08:00:00Z") : new Date("2026-10-14T05:12:00Z");
+// Default: Thursday in plan week 2, 07:12 Berlin, before the run.
+// --after-push: Tuesday 13.10. 20:30 Berlin. --rest: Sunday 18.10. 10:00 Berlin.
+const NOW = afterPush ? new Date("2026-10-13T18:30:00Z") : rest ? new Date("2026-10-18T08:00:00Z") : new Date("2026-10-15T05:12:00Z");
 const TODAY = berlinDay(NOW);
 const WEEK = weekStartOf(NOW);
 
@@ -100,7 +100,7 @@ const ses = (id: string, title: string, day: string, routineKey: SlotSession["ro
 
 function slotsFixture(): WeekSlotsData {
   const sessions = afterPush
-    ? [ses("a", HEVY_ROUTINES.PUSH.title, WEEK, "PUSH", "hevy", 18)]
+    ? [ses("a", HEVY_ROUTINES.PUSH.title, addDays(WEEK, 1), "PUSH", "hevy", 18)]
     : rest
       ? [ses("a", HEVY_ROUTINES.PUSH.title, WEEK, "PUSH"), ses("b", HEVY_ROUTINES.PULL.title, addDays(WEEK, 1), "PULL"), ses("c", HEVY_ROUTINES.LEGS.title, addDays(WEEK, 4), "LEGS"),
          ses("r1", "Laufen", addDays(WEEK, 2), null, "run", 0, 32), ses("d", HEVY_ROUTINES.CALI.title, addDays(WEEK, 5), "CALI"), ses("r2", "Laufen", addDays(WEEK, 6), null, "run", 0, 48)]
@@ -147,7 +147,7 @@ function bossFixture(): BossProgressData {
 function todayFixture(): TodayState {
   const xp = xpFixture();
   const weekday = (new Date(`${TODAY}T12:00:00Z`).getUTCDay() + 6) % 7;
-  // Wednesday and Sunday are run slots: no routine, no HEVY button.
+  // Thursday and Sunday are run slots: no routine, no HEVY button.
   const slot = afterPush ? { key: "PUSH" as const, label: "PUSH" } : { key: "LAUF" as const, label: "LAUF" };
   const routine = afterPush ? { key: "PUSH" as const, id: HEVY_ROUTINES.PUSH.id, title: HEVY_ROUTINES.PUSH.title, href: hevyRoutineLink(HEVY_ROUTINES.PUSH.id) } : null;
   const base = {
@@ -173,7 +173,7 @@ const full: DashboardData = {
     ok: true,
     data: (() => {
       const sessions = afterPush
-        ? [{ id: "a", title: HEVY_ROUTINES.PUSH.title, day: WEEK, weekday: 0, minutes: 61, sets: 18 }]
+        ? [{ id: "a", title: HEVY_ROUTINES.PUSH.title, day: addDays(WEEK, 1), weekday: 1, minutes: 61, sets: 18 }]
         : [
             { id: "a", title: "Push - A", day: WEEK, weekday: 0, minutes: 52, sets: 15 },
             { id: "b", title: "Pull - A", day: addDays(WEEK, 1), weekday: 1, minutes: 58, sets: 16 },
