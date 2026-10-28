@@ -6,6 +6,7 @@ import {
   MUSCLE_GROUPS,
   PLAN,
   RUN_MIN_MINUTES,
+  VO2_GOAL,
   WEEK_SLOTS,
   WEIGHT_GOAL,
   hevyRoutineLink,
@@ -781,6 +782,38 @@ export async function nutrition(db: Db, now = new Date()): Promise<NutritionData
     days,
     proteinDaysHit: days.filter((d) => d.proteinG !== null && d.proteinG >= PROTEIN_MIN_G).length,
     lastSampleAt,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// 12. Endurance: Apple Watch VO2max against the hold goal
+// ---------------------------------------------------------------------------
+
+export type Vo2Data = {
+  latest: number | null; // most recent estimate of the last 30 days
+  latestDay: string | null;
+  baseline: number | null; // last estimate on or before the plan start, else the first after it
+  baselineDay: string | null;
+  target: number; // hold goal: stay at or above this value
+};
+
+export async function vo2max(db: Db, now = new Date()): Promise<Vo2Data> {
+  const rs = await rows<{ day: unknown; v: unknown; at: unknown }>(
+    db,
+    sql`SELECT to_char(date AT TIME ZONE 'Europe/Berlin', 'YYYY-MM-DD') AS day, qty::float8 AS v, date AS at
+        FROM metric_samples WHERE metric_name = ${VO2_GOAL.metric} AND qty IS NOT NULL AND date < ${now}
+        ORDER BY date`,
+  );
+  const xs = rs.map((r) => ({ day: dayOf(r.day), v: n(r.v), at: new Date(r.at as string) })).filter((r): r is { day: string; v: number; at: Date } => r.v !== null);
+  const before = [...xs].reverse().find((r) => r.day <= PLAN.start) ?? xs.find((r) => r.day > PLAN.start) ?? null;
+  const last = xs.length ? xs[xs.length - 1] : null;
+  const fresh = last && now.getTime() - last.at.getTime() <= 30 * 86_400_000 ? last : null;
+  return {
+    latest: fresh ? round1(fresh.v) : null,
+    latestDay: fresh?.day ?? null,
+    baseline: before ? round1(before.v) : null,
+    baselineDay: before?.day ?? null,
+    target: VO2_GOAL.minValue,
   };
 }
 

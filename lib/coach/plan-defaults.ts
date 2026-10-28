@@ -21,6 +21,10 @@ export const WEIGHT_GOAL = {
   bossMaxKg: 88.5, // boss: <= 88.5 kg in the 7-day mean of KW 52
 } as const;
 
+// Endurance goal: hold the Apple Watch VO2max estimate through the plan (no
+// loss), checked with a 5 km test in weeks 7 and 12. Value in ml/(kg·min).
+export const VO2_GOAL = { minValue: 55.5, metric: "vo2_max" } as const;
+
 // Body weight used as system load for weighted calisthenics (pull-up, dip).
 // TODO(coach_goals): take the current 7-day mean once the goal store is live.
 export const BODYWEIGHT_KG = 92.6;
@@ -90,10 +94,10 @@ export type LeadLift = {
 };
 
 export const LEAD_LIFTS: LeadLift[] = [
-  { key: "bench", title: "Langhantel-Bankdrücken", short: "Bank", templateIds: ["79D0BB3A"], mode: "e1rm", boss: { weightKg: 90, reps: 3 }, endBoss: "100 kg × 1 (Endmission März 2027)" },
+  { key: "bench", title: "Langhantel-Bankdrücken", short: "Bank", templateIds: ["79D0BB3A"], mode: "e1rm", boss: { weightKg: 100, reps: 3 }, endBoss: "100 kg × 3 schon in KW 52 (Endmission März 2027: 100 kg)" },
   { key: "pullup_bw", title: "Klimmzug ohne Zusatz", short: "Klimmzüge", templateIds: ["1B2B1E7C"], mode: "reps", boss: { weightKg: 0, reps: 16 }, endBoss: "20 am Stück (Endmission März 2027)" },
   { key: "pullup", title: "Klimmzug gewichtet", short: "Klimmzug +kg", templateIds: ["729237D1"], mode: "added", boss: null, endBoss: null },
-  { key: "dip", title: "Brust Dip gewichtet", short: "Dips", templateIds: ["29472BE1"], mode: "added", boss: { weightKg: 17.5, reps: 8 }, endBoss: null },
+  { key: "dip", title: "Brust Dip gewichtet", short: "Dips", templateIds: ["29472BE1"], mode: "added", boss: { weightKg: 25, reps: 8 }, endBoss: null },
   { key: "squat", title: "Squat (Smith Machine)", short: "Squat", templateIds: ["DDCC3821"], mode: "e1rm", boss: { weightKg: 90, reps: 6 }, endBoss: null },
   { key: "isobench", title: "Iso-Lat Bankdrücken", short: "Iso-Bank", templateIds: ["24706DCD"], mode: "e1rm", boss: null, endBoss: null },
 ];

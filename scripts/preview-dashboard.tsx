@@ -134,9 +134,9 @@ function bossFixture(): BossProgressData {
   return {
     windowEnd: "2026-10-19",
     rows: [
-      row("bench", "Bank", "kg", 88, afterPush ? 96.3 : 93.3, 99), // targets as the loader computes them from plan-defaults
+      row("bench", "Bank", "kg", 88, afterPush ? 96.3 : 93.3, 110), // targets as the loader computes them from plan-defaults
       row("pullup_bw", "Klimmzüge", "Wdh", 11, 12, 16),
-      row("dip", "Dips", "kg", 7.5, 10, 17.5),
+      row("dip", "Dips", "kg", 7.5, 10, 25),
       row("squat", "Squat", "kg", 84, 88.7, 108),
       row("waist", "Taille", "cm", 96.5, 95.5, 92.5, true),
       row("weight", "Gewicht", "kg", 92.6, 92.1, 88.5, true),
@@ -222,6 +222,7 @@ const full: DashboardData = {
   boss: { ok: true, data: bossFixture() },
   today: { ok: true, data: todayFixture() },
   nutrition: { ok: true, data: nutritionFixture() },
+  vo2: { ok: true, data: { latest: 56.1, latestDay: addDays(TODAY, -3), baseline: 56.6, baselineDay: "2026-09-30", target: 55.5 } },
 };
 
 // Empty state: fresh deploy with an empty database and one loader that failed.
@@ -240,6 +241,7 @@ const none: DashboardData = {
   boss: { ok: false, error: "connection refused" },
   today: { ok: true, data: { today: "2026-10-04", weekday: 6, planWeek: 0, slot: null, routine: null, done: [], events: [], todayXp: 0, hero: { kind: "pause" } } },
   nutrition: { ok: true, data: { today: { day: "2026-10-04", proteinG: null, kcal: null }, days: Array.from({ length: 7 }, (_, i) => ({ day: addDays("2026-10-04", i - 6), proteinG: null, kcal: null })), proteinDaysHit: 0, lastSampleAt: null } },
+  vo2: { ok: true, data: { latest: null, latestDay: null, baseline: null, baselineDay: null, target: 55.5 } },
 };
 
 const data = empty ? none : full;
