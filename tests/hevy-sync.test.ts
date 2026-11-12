@@ -173,6 +173,24 @@ describe("HevyClient", () => {
   });
 });
 
+describe("syncHevy forceBackfill", () => {
+  it("re-imports older history into a filled table without duplicates", async () => {
+    const db = await makeTestDb();
+    await syncHevy(db, makeFetch(fake), { ...opts, maxPages: 10 });
+    expect(await countRows(db, "hevy_workouts")).toBe(2);
+    const s = await syncHevy(db, makeFetch(fake), {
+      ...opts, maxPages: 10, forceBackfill: true, backfillFrom: new Date("2025-01-01T00:00:00Z"),
+    });
+    expect(s.mode).toBe("backfill");
+    expect(s.workoutsUpserted).toBe(3);
+    expect(await countRows(db, "hevy_workouts")).toBe(3);
+    expect(await countRows(db, "hevy_sets")).toBe(7);
+    // the next normal run is incremental again
+    const next = await syncHevy(db, makeFetch(fake), { ...opts, maxPages: 10 });
+    expect(next.mode).toBe("incremental");
+  });
+});
+
 describe("GET /api/hevy/sync", () => {
   const get = (auth?: string) => new Request("https://x/api/hevy/sync", { headers: auth ? { authorization: auth } : {} });
 
@@ -200,5 +218,15 @@ describe("GET /api/hevy/sync", () => {
     expect(await ok.json()).toMatchObject({ mode: "backfill", workoutsUpserted: 2 });
     const bad = await handleHevySync(get("Bearer s3cr3t"), () => db, async () => new Response("x", { status: 500 }));
     expect(bad.status).toBe(502);
+  });
+  it("?backfill=YYYY-MM-DD forces a history import; a bad date is a 400", async () => {
+    const db = await makeTestDb();
+    await handleHevySync(get("Bearer s3cr3t"), () => db, makeFetch(fake));
+    const req = new Request("https://x/api/hevy/sync?backfill=2025-01-01", { headers: { authorization: "Bearer s3cr3t" } });
+    const res = await handleHevySync(req, () => db, makeFetch(fake));
+    expect(await res.json()).toMatchObject({ mode: "backfill", since: "2025-01-01T00:00:00.000Z", workoutsUpserted: 3 });
+    expect(await countRows(db, "hevy_workouts")).toBe(3);
+    const bad = new Request("https://x/api/hevy/sync?backfill=2025", { headers: { authorization: "Bearer s3cr3t" } });
+    expect((await handleHevySync(bad, () => db, makeFetch(fake))).status).toBe(400);
   });
 });

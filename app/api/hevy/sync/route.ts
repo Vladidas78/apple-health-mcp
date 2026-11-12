@@ -6,6 +6,7 @@ import type { FetchLike } from "@/lib/hevy/client";
 
 // Daily HEVY → Postgres mirror. Triggered by Vercel Cron (vercel.json, bearer
 // CRON_SECRET) or by hand with the MCP secret. GET because Vercel Cron sends GET.
+// One-off history import: ?backfill=YYYY-MM-DD re-reads all workouts from that day on.
 export const maxDuration = 300;
 export const dynamic = "force-dynamic";
 
@@ -19,8 +20,16 @@ export async function handleHevySync(
   if (!cronOk(req)) return Response.json({ error: "unauthorized" }, { status: 401 });
   const apiKey = optionalEnv("HEVY_API_KEY");
   if (!apiKey) return Response.json({ error: "HEVY_API_KEY not set" }, { status: 503 });
+  const backfill = new URL(req.url).searchParams.get("backfill");
+  let backfillFrom: Date | undefined;
+  if (backfill !== null) {
+    backfillFrom = /^\d{4}-\d{2}-\d{2}$/.test(backfill) ? new Date(`${backfill}T00:00:00Z`) : undefined;
+    if (!backfillFrom || Number.isNaN(backfillFrom.getTime())) {
+      return Response.json({ error: "backfill must be YYYY-MM-DD" }, { status: 400 });
+    }
+  }
   try {
-    const summary = await syncHevy(getDbFn(), fetchImpl, { apiKey });
+    const summary = await syncHevy(getDbFn(), fetchImpl, backfillFrom ? { apiKey, backfillFrom, forceBackfill: true } : { apiKey });
     return Response.json(summary, { status: 200 });
   } catch (err) {
     const message = err instanceof Error ? err.message : "sync failed";

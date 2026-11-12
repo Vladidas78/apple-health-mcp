@@ -8,6 +8,8 @@ import { HevyClient, type FetchLike, type HevyWorkout, type HevyBodyMeasurement 
 // Mode is derived from the table, not from stored state:
 // - hevy_workouts empty  → BACKFILL: page through /workouts, keep start_time >= backfillFrom
 // - otherwise            → INCREMENTAL: /workouts/events?since=max(updated_at) - overlap
+// - forceBackfill        → BACKFILL even when rows exist (one-off history import,
+//                          e.g. GET /api/hevy/sync?backfill=2025-01-01); upserts keep it idempotent
 // The overlap re-delivers already-known workouts; the upsert makes that harmless.
 // "deleted" events remove the workout row (sets cascade).
 
@@ -25,6 +27,7 @@ export type SyncOpts = {
   overlapMs?: number; // default 1 day
   baseUrl?: string;
   maxPages?: number; // safety cap per endpoint, default 500
+  forceBackfill?: boolean; // re-run the backfill from backfillFrom even if the table has rows
   syncTemplates?: boolean; // default true
   syncMeasurements?: boolean; // default true
 };
@@ -123,7 +126,7 @@ export async function syncHevy(db: Db, fetchImpl: FetchLike, opts: SyncOpts): Pr
     templatesUpserted: 0, measurementsUpserted: 0, warnings: [],
   };
 
-  const cursor = await maxUpdatedAt(db);
+  const cursor = opts.forceBackfill ? null : await maxUpdatedAt(db);
   if (!cursor) {
     summary.mode = "backfill";
     summary.since = backfillFrom.toISOString();
