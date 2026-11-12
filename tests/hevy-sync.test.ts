@@ -5,6 +5,7 @@ import { syncHevy } from "@/lib/hevy/sync";
 import { HevyClient, type HevyWorkout, type HevyWorkoutEvent } from "@/lib/hevy/client";
 import { hevyWorkouts, hevySets, hevyExerciseTemplates, hevyMeasurements } from "@/db/schema";
 import { handleHevySync } from "@/app/api/hevy/sync/route";
+import { withBackfill } from "@/app/api/hevy/backfill/route";
 
 // In-memory stand-in for the HEVY API, served through a fetch mock. Pages are
 // cut to the requested pageSize so pagination is exercised for real.
@@ -228,5 +229,20 @@ describe("GET /api/hevy/sync", () => {
     expect(await countRows(db, "hevy_workouts")).toBe(3);
     const bad = new Request("https://x/api/hevy/sync?backfill=2025", { headers: { authorization: "Bearer s3cr3t" } });
     expect((await handleHevySync(bad, () => db, makeFetch(fake))).status).toBe(400);
+  });
+});
+
+describe("GET /api/hevy/backfill", () => {
+  it("adds the default history start and keeps the auth header", async () => {
+    const r = withBackfill(new Request("https://x/api/hevy/backfill", { headers: { authorization: "Bearer cron" } }));
+    expect(new URL(r.url).searchParams.get("backfill")).toBe("2025-02-01");
+    expect(r.headers.get("authorization")).toBe("Bearer cron");
+    const db = await makeTestDb();
+    const res = await handleHevySync(withBackfill(new Request("https://x/api/hevy/backfill", { headers: { authorization: "Bearer s3cr3t" } })), () => db, makeFetch(fake));
+    expect(await res.json()).toMatchObject({ mode: "backfill", since: "2025-02-01T00:00:00.000Z", workoutsUpserted: 3 });
+  });
+  it("keeps an explicit backfill date", () => {
+    const r = withBackfill(new Request("https://x/api/hevy/backfill?backfill=2024-01-01"));
+    expect(new URL(r.url).searchParams.get("backfill")).toBe("2024-01-01");
   });
 });
