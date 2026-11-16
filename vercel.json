@@ -3,10 +3,6 @@
     {
       "path": "/api/hevy/sync",
       "schedule": "0 3 * * *"
-    },
-    {
-      "path": "/api/hevy/backfill",
-      "schedule": "30 3 13 11 *"
     }
   ]
 }
